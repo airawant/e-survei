@@ -124,7 +124,7 @@ export default function SurveyResults() {
             </Alert>
           )}
           <div className="flex space-x-4">
-            <Button variant="outline" onClick={() => router.push("/admin/manage")}>
+            <Button variant="outline" onClick={() => router.push("/results")}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Kembali ke Daftar Survey
             </Button>
@@ -158,7 +158,7 @@ export default function SurveyResults() {
           <p className="mt-2 text-gray-600">
             Survey yang Anda cari tidak ada atau Anda tidak memiliki akses.
           </p>
-          <Button onClick={() => router.push("/admin/manage")} className="mt-6">
+          <Button onClick={() => router.push("/results")} className="mt-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali ke Daftar Survey
           </Button>
@@ -179,7 +179,7 @@ export default function SurveyResults() {
       <ClientOnly>
         <div>
           <div className="flex items-center mb-8">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/admin/manage")} className="mr-4">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/results")} className="mr-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Kembali
             </Button>

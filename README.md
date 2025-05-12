@@ -67,6 +67,57 @@ yarn dev
 
 ## Pembaruan Terbaru
 
+### Visualisasi Grafik Distribusi Jawaban Responden
+
+Pada pembaruan terbaru, kami telah menambahkan fitur visualisasi grafik distribusi jawaban responden untuk setiap unsur survei:
+
+1. **Grafik Distribusi per Unsur**
+   - Visualisasi terpisah untuk setiap unsur/pertanyaan survei
+   - Grafik batang menunjukkan distribusi jawaban dengan:
+     - Sumbu X: Skala likert (1-4 atau 1-6)
+     - Sumbu Y: Jumlah responden yang memilih setiap nilai
+   - Tampilan yang intuitif dan informatif untuk analisis data
+
+2. **Dukungan untuk Berbagai Skala Likert**
+   - Otomatis mendeteksi dan menyesuaikan dengan jenis skala (likert-4 atau likert-6)
+   - Untuk likert-4: menampilkan opsi 1-4 (STM, TM, CM, SM)
+   - Untuk likert-6: menampilkan opsi 1-6 (STM, TM, KM, CM, M, SM)
+   - Gradasi warna yang berbeda untuk setiap skala
+
+3. **Informasi Detil per Grafik**
+   - Teks pertanyaan lengkap di setiap grafik
+   - Informasi jenis skala yang digunakan
+   - Data tambahan berupa:
+     - Rata-rata skor
+     - Total responden
+     - Kategori mutu
+
+4. **Fitur Interaktif**
+   - Tooltip informatif saat mengarahkan kursor ke batang grafik
+   - Menampilkan jumlah responden yang memilih nilai tersebut
+   - Deskripsi lengkap dari setiap skala likert
+
+5. **Kode Warna yang Konsisten**
+   - Warna merah untuk nilai rendah (tidak memuaskan)
+   - Warna biru untuk nilai tinggi (memuaskan)
+   - Gradasi warna sesuai dengan tingkat kepuasan
+   - Legenda dan keterangan untuk memudahkan interpretasi
+
+### Cara Mengakses
+
+Fitur visualisasi distribusi jawaban responden dapat diakses melalui tab "Grafik" pada halaman hasil survei:
+
+1. Buka halaman hasil survei
+2. Pilih tab "Grafik" pada bagian bawah halaman
+3. Lihat grafik distribusi untuk setiap unsur/pertanyaan
+4. Arahkan kursor ke batang grafik untuk melihat detail jumlah responden
+
+Visualisasi ini sangat berguna untuk memahami:
+- Distribusi jawaban untuk setiap unsur
+- Pola jawaban responden secara keseluruhan
+- Unsur-unsur yang memiliki tingkat kepuasan tertinggi dan terendah
+- Area yang perlu ditingkatkan berdasarkan frekuensi jawaban
+
 ### Penyimpanan Data Periode Survei
 
 Pada pembaruan terbaru, kami telah menambahkan fitur untuk menyimpan informasi periode survei (seperti "Q1-2025" atau "S1-2025") ke dalam kolom `periode_survei` di tabel `respondents` dan `responses`. Fitur ini memungkinkan:
