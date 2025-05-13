@@ -67,6 +67,27 @@ yarn dev
 
 ## Pembaruan Terbaru
 
+### Tampilan Bintang untuk Skala Likert
+
+Pada pembaruan terbaru, kami telah menambahkan tampilan bintang untuk skala Likert di seluruh aplikasi:
+
+1. **Rating Bintang yang Intuitif**
+   - Skala Likert ditampilkan sebagai barisan bintang yang dapat diklik
+   - Saat mengklik bintang tertentu, semua bintang sebelumnya juga otomatis terpilih
+   - Nilai tetap disimpan sebagai skala 1-6 sesuai dengan standar Likert
+   - Tampilan yang lebih familiar bagi pengguna seperti sistem rating pada umumnya
+
+2. **Umpan Balik Visual yang Jelas**
+   - Bintang yang terpilih ditampilkan dengan warna kuning yang cerah
+   - Bintang yang belum terpilih ditampilkan dengan warna abu-abu
+   - Label deskriptif ditampilkan di bawah barisan bintang untuk memperjelas makna nilai
+   - Transisi warna yang halus saat memilih rating
+
+3. **Konsistensi di Seluruh Aplikasi**
+   - Sistem rating bintang yang sama digunakan pada form pengisian dan visualisasi hasil
+   - Pengalaman pengguna yang konsisten di seluruh aplikasi
+   - Memudahkan interpretasi data dengan representasi visual yang sama
+
 ### Visualisasi Grafik Distribusi Jawaban Responden
 
 Pada pembaruan terbaru, kami telah menambahkan fitur visualisasi grafik distribusi jawaban responden untuk setiap unsur survei:
@@ -74,14 +95,14 @@ Pada pembaruan terbaru, kami telah menambahkan fitur visualisasi grafik distribu
 1. **Grafik Distribusi per Unsur**
    - Visualisasi terpisah untuk setiap unsur/pertanyaan survei
    - Grafik batang menunjukkan distribusi jawaban dengan:
-     - Sumbu X: Skala likert (1-4 atau 1-6)
+     - Sumbu X: Skala likert (1-4 atau 1-6) dengan tampilan bintang (★)
      - Sumbu Y: Jumlah responden yang memilih setiap nilai
    - Tampilan yang intuitif dan informatif untuk analisis data
 
-2. **Dukungan untuk Berbagai Skala Likert**
+2. **Dukungan untuk Berbagai Skala Likert dengan Tampilan Bintang**
    - Otomatis mendeteksi dan menyesuaikan dengan jenis skala (likert-4 atau likert-6)
-   - Untuk likert-4: menampilkan opsi 1-4 (STM, TM, CM, SM)
-   - Untuk likert-6: menampilkan opsi 1-6 (STM, TM, KM, CM, M, SM)
+   - Untuk likert-4: menampilkan opsi 1★ hingga 4★★★★
+   - Untuk likert-6: menampilkan opsi 1★ hingga 6★★★★★★
    - Gradasi warna yang berbeda untuk setiap skala
 
 3. **Informasi Detil per Grafik**

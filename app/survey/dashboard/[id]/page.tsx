@@ -74,7 +74,7 @@ export default function SurveyDashboard({ params }: SurveyDashboardProps) {
     <div className="container py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{surveyData.title}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">{surveyData.title}</h1>
           <p className="text-muted-foreground mt-1">{surveyData.description}</p>
         </div>
         <Button asChild>

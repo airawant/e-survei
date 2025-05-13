@@ -1873,16 +1873,16 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
                         const numScore = parseInt(score);
                         return {
                           skor: isLikert6 ?
-                            (numScore === 1 ? "1 - STM" :
-                             numScore === 2 ? "2 - TM" :
-                             numScore === 3 ? "3 - KM" :
-                             numScore === 4 ? "4 - CM" :
-                             numScore === 5 ? "5 - M" :
-                             "6 - SM") :
-                            (numScore === 1 ? "1 - STM" :
-                             numScore === 2 ? "2 - TM" :
-                             numScore === 3 ? "3 - CM" :
-                             "4 - SM"),
+                            (numScore === 1 ? "1 ★" :
+                             numScore === 2 ? "2 ★★" :
+                             numScore === 3 ? "3 ★★★" :
+                             numScore === 4 ? "4 ★★★★" :
+                             numScore === 5 ? "5 ★★★★★" :
+                             "6 ★★★★★★") :
+                            (numScore === 1 ? "1 ★" :
+                             numScore === 2 ? "2 ★★" :
+                             numScore === 3 ? "3 ★★★" :
+                             "4 ★★★★"),
                           jumlah: distribution[numScore],
                           skorAsli: numScore,
                         };
@@ -1935,16 +1935,18 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
                                     `${value} responden`, 'Jumlah'
                                   ]}
                                   labelFormatter={(label) => {
-                                    const scorePart = label.split(" - ")[0];
-                                    const textPart = label.split(" - ")[1];
+                                    const scorePart = label.split(" ")[0];
+                                    const numScore = parseInt(scorePart);
                                     return `Skor ${scorePart}: ${
-                                      textPart === "STM" ? "Sangat Tidak Memuaskan" :
-                                      textPart === "TM" ? "Tidak Memuaskan" :
-                                      textPart === "KM" ? "Kurang Memuaskan" :
-                                      textPart === "CM" ? "Cukup Memuaskan" :
-                                      textPart === "M" ? "Memuaskan" :
+                                      numScore === 1 ? "Sangat Tidak Memuaskan" :
+                                      numScore === 2 ? "Tidak Memuaskan" :
+                                      (numScore === 3 && isLikert6) ? "Kurang Memuaskan" :
+                                      (numScore === 3 && !isLikert6) ? "Cukup Memuaskan" :
+                                      numScore === 4 && isLikert6 ? "Cukup Memuaskan" :
+                                      numScore === 4 && !isLikert6 ? "Sangat Memuaskan" :
+                                      numScore === 5 ? "Memuaskan" :
                                       "Sangat Memuaskan"
-                                    }`;
+                                    } (${label.split(" ")[1]})`;
                                   }}
                                 />
                                 <Legend />
@@ -1988,21 +1990,21 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
                         <div>
                           <p className="text-sm font-medium mb-1">Skala Likert-4:</p>
                           <ul className="text-xs space-y-1">
-                            <li><span className="inline-block w-3 h-3 bg-red-200 mr-1"></span> 1 = Sangat Tidak Memuaskan (STM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-red-300 mr-1"></span> 2 = Tidak Memuaskan (TM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-blue-200 mr-1"></span> 3 = Cukup Memuaskan (CM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-blue-400 mr-1"></span> 4 = Sangat Memuaskan (SM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-red-200 mr-1"></span> 1 ★ = Sangat Tidak Memuaskan (STM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-red-300 mr-1"></span> 2 ★★ = Tidak Memuaskan (TM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-blue-200 mr-1"></span> 3 ★★★ = Cukup Memuaskan (CM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-blue-400 mr-1"></span> 4 ★★★★ = Sangat Memuaskan (SM)</li>
                           </ul>
                         </div>
                         <div>
                           <p className="text-sm font-medium mb-1">Skala Likert-6:</p>
                           <ul className="text-xs space-y-1">
-                            <li><span className="inline-block w-3 h-3 bg-red-100 mr-1"></span> 1 = Sangat Tidak Memuaskan (STM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-red-200 mr-1"></span> 2 = Tidak Memuaskan (TM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-red-300 mr-1"></span> 3 = Kurang Memuaskan (KM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-blue-200 mr-1"></span> 4 = Cukup Memuaskan (CM)</li>
-                            <li><span className="inline-block w-3 h-3 bg-blue-300 mr-1"></span> 5 = Memuaskan (M)</li>
-                            <li><span className="inline-block w-3 h-3 bg-blue-400 mr-1"></span> 6 = Sangat Memuaskan (SM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-red-100 mr-1"></span> 1 ★ = Sangat Tidak Memuaskan (STM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-red-200 mr-1"></span> 2 ★★ = Tidak Memuaskan (TM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-red-300 mr-1"></span> 3 ★★★ = Kurang Memuaskan (KM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-blue-200 mr-1"></span> 4 ★★★★ = Cukup Memuaskan (CM)</li>
+                            <li><span className="inline-block w-3 h-3 bg-blue-300 mr-1"></span> 5 ★★★★★ = Memuaskan (M)</li>
+                            <li><span className="inline-block w-3 h-3 bg-blue-400 mr-1"></span> 6 ★★★★★★ = Sangat Memuaskan (SM)</li>
                           </ul>
                         </div>
                       </div>

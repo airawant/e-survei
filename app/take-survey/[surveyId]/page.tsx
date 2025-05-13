@@ -1246,39 +1246,35 @@ export default function TakeSurveyPage({ params }: { params: Promise<{ surveyId:
                     // Menggunakan utilitas untuk mendapatkan opsi dan label berdasarkan tipe
                     const likertOptions = getLikertOptions(questionType);
                     const likertLabels = getLikertLabels(questionType);
+                    const maxRating = likertOptions.length;
+                    const currentValue = parseInt(responses[question?.id || '']?.toString() || "0");
 
                     return (
                       <div className="space-y-4">
                         <div className="flex justify-between px-4 text-sm text-gray-500">
                           <span>{likertLabels[1]}</span>
-                          <span>{likertLabels[likertOptions.length]}</span>
+                          <span>{likertLabels[maxRating]}</span>
                         </div>
 
-                        <RadioGroup
-                          value={responses[question?.id || '']?.toString() || ""}
-                          onValueChange={(value) => handleResponseChange(question?.id || '', parseInt(value))}
-                          className={cn(
-                            "grid gap-2",
-                            likertOptions.length === 4 ? "grid-cols-4" : "grid-cols-6"
-                          )}
-                        >
+                        <div className="flex items-center justify-center space-x-4 py-8">
                           {likertOptions.map((value) => (
                             <div key={value} className="flex flex-col items-center">
-                              <RadioGroupItem
-                                value={value.toString()}
-                                id={`rating-${value}`}
-                                className="peer sr-only"
-                              />
-                              <Label
-                                htmlFor={`rating-${value}`}
-                                className="flex flex-col items-center justify-center w-full h-20 rounded-lg border-2 border-gray-200 cursor-pointer peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 hover:bg-gray-50 transition-colors"
+                              <button
+                                type="button"
+                                onClick={() => handleResponseChange(question?.id || '', value)}
+                                className="text-6xl focus:outline-none transition-colors"
                               >
-                                <span className="text-2xl font-bold mb-1">{value}</span>
-                                <span className="text-[10px] text-center leading-tight">{getLikertLabelForValue(value, questionType)}</span>
-                              </Label>
+                                <span className={value <= currentValue ? "text-yellow-400" : "text-gray-300"}>
+                                  ★
+                                </span>
+                              </button>
                             </div>
                           ))}
-                        </RadioGroup>
+                        </div>
+
+                        <div className="text-center text-sm text-gray-600">
+                          {currentValue ? `${getLikertLabelForValue(currentValue, questionType)}` : "Belum memberikan rating"}
+                        </div>
                       </div>
                     );
                   }

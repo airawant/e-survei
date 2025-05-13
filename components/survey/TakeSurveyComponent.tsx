@@ -394,32 +394,31 @@ const TakeSurveyComponent = ({ surveyId }: TakeSurveyComponentProps) => {
       // Menggunakan utilitas untuk mendapatkan opsi berdasarkan tipe
       const likertOptions = getLikertOptions(question.type);
       const likertLabels = getLikertLabels(question.type);
+      const maxRating = likertOptions.length;
 
       return (
         <div className="pt-2">
           <div className="flex justify-between mb-2 text-xs text-gray-500">
             <span>{likertLabels[1]}</span>
-            <span>{likertLabels[likertOptions.length]}</span>
+            <span>{likertLabels[maxRating]}</span>
           </div>
-          <div className={cn(
-            "grid gap-2",
-            likertOptions.length === 4 ? "grid-cols-4" : "grid-cols-6"
-          )}>
+          <div className="flex items-center justify-center space-x-4 py-8">
             {likertOptions.map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => handleAnswerChange(question.id, value)}
-                className={cn(
-                  "h-10 rounded-md border transition-all",
-                  answerValue === value
-                    ? "bg-primary text-white border-primary"
-                    : "bg-white hover:bg-gray-50 border-gray-200",
-                )}
+                className="text-9xl focus:outline-none transition-colors px-2 hover:scale-125 hover:text-yellow-300 hover:text-yellow-300"
+                title={likertLabels[value]}
               >
-                {value}
+                <span className={value <= (answerValue as number || 0) ? "text-yellow-400" : "text-gray-300"}>
+                  ★
+                </span>
               </button>
             ))}
+          </div>
+          <div className="text-center text-sm text-gray-500">
+            {answerValue ? `${likertLabels[answerValue as number]}` : "Belum memberikan rating"}
           </div>
         </div>
       )
@@ -537,231 +536,92 @@ const TakeSurveyComponent = ({ surveyId }: TakeSurveyComponentProps) => {
     })
 
     if (formErrors[`demographic-${fieldId}`]) {
-      setFormErrors((prev) => {
-        const updated = { ...prev }
-        delete updated[`demographic-${fieldId}`]
-        return updated
-      })
+      setFormErrors((prev) => ({ ...prev, [`demographic-${fieldId}`]: "" }))
     }
   }
 
   const handleAnswerChange = (questionId: string, value: string | number | string[]) => {
     setAnswerData((prev) => {
-      const existingAnswerIndex = prev.answers.findIndex((a) => a.questionId === questionId)
-      if (existingAnswerIndex >= 0) {
+      const existingAnswerIndex = prev.answers.findIndex(
+        (a) => a.questionId === questionId
+      )
+
+      if (existingAnswerIndex > -1) {
         const updatedAnswers = [...prev.answers]
-        updatedAnswers[existingAnswerIndex] = { questionId, value }
-        return { ...prev, answers: updatedAnswers }
-      } else {
+        updatedAnswers[existingAnswerIndex] = {
+          ...updatedAnswers[existingAnswerIndex],
+          value,
+        }
         return {
           ...prev,
-          answers: [...prev.answers, { questionId, value }],
+          answers: updatedAnswers,
         }
+      }
+
+      return {
+        ...prev,
+        answers: [
+          ...prev.answers,
+          {
+            questionId,
+            value,
+          },
+        ],
       }
     })
 
     if (formErrors[`question-${questionId}`]) {
-      setFormErrors((prev) => {
-        const updated = { ...prev }
-        delete updated[`question-${questionId}`]
-        return updated
-      })
+      setFormErrors((prev) => ({ ...prev, [`question-${questionId}`]: "" }))
     }
-  }
-
-  const validateDemographicFields = (demographicFields: LocalDemographicField[]) => {
-    const errors: { [key: string]: string } = {}
-    demographicFields.forEach((field) => {
-      if (field.required) {
-        const demographicValue = answerData.demographicData.find(
-          (d) => d.fieldId === field.id
-        )?.value
-        if (!demographicValue) {
-          errors[`demographic-${field.id}`] = "Wajib diisi"
-        }
-      }
-    })
-    return errors
-  }
-
-  const validateCurrentStep = (): boolean => {
-    const { currentStep } = surveyProgress;
-    let newErrors: { [key: string]: string } = {};
-
-    if (currentStep === 0) {
-      // Step 0 tidak memerlukan validasi
-      return true;
-    } else if (currentStep === 1) {
-      // Validasi fields demografi
-      const demographicErrors = validateDemographicFields(
-        currentSurvey.demographicFields.map(field => field as LocalDemographicField)
-      );
-      newErrors = demographicErrors;
-    } else {
-      // Validasi pertanyaan survey
-      const indicatorIndex = currentStep - 2;
-      const indicator = currentSurvey.indicators[indicatorIndex];
-
-      if (indicator) {
-        indicator.questions.forEach((question) => {
-          if (question.required) {
-            const value = answerData.answers.find((a) => a.questionId === question.id)?.value;
-            if (!value || (Array.isArray(value) && value.length === 0) || value === "") {
-              newErrors[`question-${question.id}`] = "Pertanyaan ini wajib dijawab";
-            }
-          }
-        });
-      }
-    }
-
-    setFormErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNext = () => {
-    if (!validateCurrentStep()) {
-      return
-    }
-
-    const { currentStep, totalSteps } = surveyProgress
-
-    saveResponseDraft({
-      answers: answerData.answers,
-      demographicData: answerData.demographicData,
-    })
-
-    let completedQuestions = 0
-    currentSurvey.indicators.forEach((indicator) => {
-      indicator.questions.forEach((question) => {
-        if (answerData.answers.some((a) => a.questionId === question.id)) {
-          completedQuestions += 1
-        }
-      })
-    })
-
-    if (currentStep === totalSteps - 1) {
-      setConfirmSubmit(true)
-      return
-    }
-
-    const nextStep = currentStep + 1
-    updateSurveyProgress({
-      currentStep: nextStep,
-      completedQuestions,
-    })
-  }
-
-  const handlePrev = () => {
-    const { currentStep } = surveyProgress
-    if (currentStep > 0) {
-      updateSurveyProgress({
-        currentStep: currentStep - 1,
-      })
-    }
-  }
-
-  const handleSaveDraft = () => {
-    saveResponseDraft({
-      answers: answerData.answers,
-      demographicData: answerData.demographicData,
-    })
-    toast.success("Draft saved successfully")
   }
 
   const handleSubmit = async () => {
+    setSubmitting(true)
     try {
-      setSubmitting(true)
-
-      await submitSurveyResponse({
-        surveyId: currentSurvey.id,
-        answers: answerData.answers,
-        demographicData: answerData.demographicData,
-        feedback: feedbackText,
-      })
-
+      await submitSurveyResponse(answerData)
       setSurveyCompleted(true)
     } catch (error) {
-      console.error("Error submitting response:", error)
-      toast.error("Failed to submit response. Please try again.")
+      console.error("Error submitting survey:", error)
+      toast.error("An error occurred while submitting the survey. Please try again later.")
     } finally {
       setSubmitting(false)
-      setConfirmSubmit(false)
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
-      <Card className="w-full max-w-3xl border-0 shadow-subtle">
-        <div className="px-6 pt-6 pb-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-500">
-              Step {surveyProgress.currentStep + 1} of {surveyProgress.totalSteps}
+      <Card className="w-full max-w-lg border-0 shadow-subtle">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Survey</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pb-6">
+          {currentStepContent()}
+          <div className="rounded-md border p-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Current Step:</span>
+                <span className="text-gray-900">{surveyProgress.currentStep + 1} of {surveyProgress.totalSteps}</span>
+              </div>
             </div>
-            <div className="text-sm font-medium text-gray-500">{surveyProgress.completionPercentage}% Complete</div>
           </div>
-          <Progress value={surveyProgress.completionPercentage} className="h-1.5" />
-        </div>
-
-        {currentStepContent()}
-
-        <CardFooter className="flex justify-between pt-4 pb-6 px-6 border-t">
-          <div>
-            {surveyProgress.currentStep > 0 && (
-              <Button type="button" variant="outline" onClick={handlePrev} disabled={submitting}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
-              </Button>
-            )}
-          </div>
-          <div className="flex space-x-2">
-            {surveyProgress.currentStep > 0 && (
-              <Button type="button" variant="outline" onClick={handleSaveDraft} disabled={submitting}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Draft
-              </Button>
-            )}
-            <Button type="button" onClick={handleNext} disabled={submitting}>
-              {surveyProgress.currentStep === surveyProgress.totalSteps - 1 ? (
-                "Finish"
-              ) : (
-                <>
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </>
-              )}
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          {surveyProgress.currentStep > 0 && (
+            <Button onClick={() => updateSurveyProgress(-1)} className="w-1/2">
+              Previous
             </Button>
-          </div>
+          )}
+          {surveyProgress.currentStep < surveyProgress.totalSteps - 1 ? (
+            <Button onClick={() => updateSurveyProgress(1)} className="w-1/2">
+              Next
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} className="w-1/2" disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit"}
+            </Button>
+          )}
         </CardFooter>
       </Card>
-
-      <AlertDialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Submit Your Response</AlertDialogTitle>
-            <AlertDialogDescription>
-              You're about to submit your survey response. Would you like to add any additional feedback?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-2">
-            <Textarea
-              placeholder="Any additional comments or feedback (optional)"
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              className="w-full"
-              rows={4}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit} disabled={submitting} className="bg-primary">
-              {submitting && (
-                <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              )}
-              Submit Response
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
