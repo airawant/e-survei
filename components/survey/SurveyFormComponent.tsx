@@ -251,62 +251,88 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
     if (isEditing && id) {
       console.log("Edit mode detected - Survey ID:", id);
       setFormSubmitting(true);
-      getSurvey(id).then((loadedSurvey: any) => {
-        if (loadedSurvey !== undefined && loadedSurvey !== null) {
-          console.log("Survey loaded successfully:", loadedSurvey?.id);
-          console.log("Survey details:", {
-            title: loadedSurvey?.title,
-            description: loadedSurvey?.description,
-            isActive: loadedSurvey.isActive,
-            indicators: loadedSurvey.indicators?.length || 0,
-            demographicFields: loadedSurvey.demographicFields?.length || 0
-          });
 
-          // Update isWeightedSurvey berdasarkan tipe survei yang dimuat
-          if (loadedSurvey.type) {
-            console.log("Survey type from database:", loadedSurvey.type);
-            setIsWeightedSurvey(loadedSurvey.type === 'weighted');
+      const fetchSurveyData = async () => {
+        try {
+          // Menggunakan currentSurvey sebagai cache jika sudah ada dan ID nya sama
+          if (currentSurvey && currentSurvey.id === id) {
+            console.log("Using cached survey data:", currentSurvey.id);
+            return currentSurvey;
           }
 
-          // Dump indicators structure for debugging
-          if (loadedSurvey.indicators) {
-            loadedSurvey.indicators.forEach((indicator: any, idx: number) => {
-              console.log(`Indicator ${idx+1}:`, {
-                id: indicator.id,
-                title: indicator.title || indicator.name,
-                questionCount: indicator.questions?.length || 0
-              });
-              if (indicator.questions && indicator.questions.length > 0) {
-                indicator.questions.forEach((q: any, qIdx: number) => {
-                  console.log(`  Question ${qIdx+1}:`, {
-                    id: q.id,
-                    text: q.text,
-                    weight: q.weight
-                  });
-                });
-              }
-            });
-          }
-
-          // Tambahkan log khusus untuk field demografis
-          if (loadedSurvey.demographicFields && loadedSurvey.demographicFields.length > 0) {
-            console.log("Demographic fields loaded:", loadedSurvey.demographicFields.length);
-            loadedSurvey.demographicFields.forEach((field: any, idx: number) => {
-              console.log(`Demographic field ${idx+1}:`, {
-                id: field.id,
-                label: field.label,
-                type: field.type,
-                required: field.required,
-                options: field.options
-              });
-            });
-          } else {
-            console.log("No demographic fields loaded from getSurvey, will fetch directly from database");
-          }
+          // Jika tidak ada cache, ambil dari database
+          console.log("Fetching survey data from database for ID:", id);
+          const loadedSurvey = await getSurvey(id);
+          return loadedSurvey;
+        } catch (error) {
+          console.error("Error fetching survey data:", error);
+          toast.error("Gagal mengambil data survei");
+          return null;
         }
-      }).finally(() => setFormSubmitting(false));
+      };
+
+      fetchSurveyData()
+        .then((loadedSurvey: any) => {
+          if (loadedSurvey !== undefined && loadedSurvey !== null) {
+            console.log("Survey loaded successfully:", loadedSurvey?.id);
+            console.log("Survey details:", {
+              title: loadedSurvey?.title,
+              description: loadedSurvey?.description,
+              isActive: loadedSurvey.isActive,
+              indicators: loadedSurvey.indicators?.length || 0,
+              demographicFields: loadedSurvey.demographicFields?.length || 0
+            });
+
+            // Update isWeightedSurvey berdasarkan tipe survei yang dimuat
+            if (loadedSurvey.type) {
+              console.log("Survey type from database:", loadedSurvey.type);
+              setIsWeightedSurvey(loadedSurvey.type === 'weighted');
+            }
+
+            // Dump indicators structure for debugging
+            if (loadedSurvey.indicators) {
+              loadedSurvey.indicators.forEach((indicator: any, idx: number) => {
+                console.log(`Indicator ${idx+1}:`, {
+                  id: indicator.id,
+                  title: indicator.title || indicator.name,
+                  questionCount: indicator.questions?.length || 0
+                });
+                if (indicator.questions && indicator.questions.length > 0) {
+                  indicator.questions.forEach((q: any, qIdx: number) => {
+                    console.log(`  Question ${qIdx+1}:`, {
+                      id: q.id,
+                      text: q.text,
+                      weight: q.weight
+                    });
+                  });
+                }
+              });
+            }
+
+            // Tambahkan log khusus untuk field demografis
+            if (loadedSurvey.demographicFields && loadedSurvey.demographicFields.length > 0) {
+              console.log("Demographic fields loaded:", loadedSurvey.demographicFields.length);
+              loadedSurvey.demographicFields.forEach((field: any, idx: number) => {
+                console.log(`Demographic field ${idx+1}:`, {
+                  id: field.id,
+                  label: field.label,
+                  type: field.type,
+                  required: field.required,
+                  options: field.options
+                });
+              });
+            } else {
+              console.log("No demographic fields loaded from getSurvey, will fetch directly from database");
+            }
+          }
+        })
+        .catch(err => {
+          console.error("Error in survey data promise chain:", err);
+          toast.error("Terjadi kesalahan saat memproses data survei");
+        })
+        .finally(() => setFormSubmitting(false));
     }
-  }, [isEditing, id, getSurvey])
+  }, [isEditing, id, getSurvey, currentSurvey])
 
   // Tambahkan useEffect khusus untuk mengambil field demografis
   useEffect(() => {
@@ -563,7 +589,8 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
         });
 
         try {
-          await updateSurvey(id, {
+          // Persiapkan data update
+          const surveyData = {
             title: data.title,
             description: data.description,
             isActive: data.isActive,
@@ -594,7 +621,20 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
               ...(data.period.type === 'quarterly' && { quarter: data.period.quarter }),
               ...(data.period.type === 'semester' && { semester: data.period.semester })
             }
+          };
+
+          console.log("Calling updateSurvey with ID:", id);
+          console.log("Update data sample:", {
+            title: surveyData.title,
+            description: surveyData.description.substring(0, 50) + "...",
+            indicatorCount: surveyData.indicators.length
           });
+
+          // Panggil fungsi update
+          await updateSurvey(id, surveyData);
+
+          // Refresh survey data setelah update berhasil
+          await getSurvey(id);
 
           // Update data demografis
           try {

@@ -606,15 +606,15 @@ const TakeSurveyComponent = ({ surveyId }: TakeSurveyComponentProps) => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          {surveyProgress.currentStep > 0 && (
+            {surveyProgress.currentStep > 0 && (
             <Button onClick={() => updateSurveyProgress(-1)} className="w-1/2">
-              Previous
-            </Button>
-          )}
+                Previous
+              </Button>
+            )}
           {surveyProgress.currentStep < surveyProgress.totalSteps - 1 ? (
             <Button onClick={() => updateSurveyProgress(1)} className="w-1/2">
               Next
-            </Button>
+              </Button>
           ) : (
             <Button onClick={handleSubmit} className="w-1/2" disabled={submitting}>
               {submitting ? "Submitting..." : "Submit"}

@@ -608,15 +608,20 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       console.log("Updating survey:", id)
       console.log("Update data:", JSON.stringify(updates, null, 2))
 
+      // Validasi ID sebelum melanjutkan
+      if (!id || id === '{}' || (typeof id === 'object' && Object.keys(id).length === 0)) {
+        const errorMsg = "ID survei tidak valid";
+        console.error(errorMsg, id);
+        setError(errorMsg);
+        setLoading(false);
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
       // Cek apakah survey berbobot atau tidak
       const surveyType = updates.type || (currentSurvey?.type || 'weighted');
       const isWeightedSurvey = surveyType === 'weighted';
       console.log(`Survey type: ${surveyType}, isWeightedSurvey: ${isWeightedSurvey}`);
-
-      // Validasi ID
-      if (!id || id === '{}' || (typeof id === 'object' && Object.keys(id).length === 0)) {
-        throw new Error("ID survei tidak valid")
-      }
 
       // Map data ke format yang diterima oleh updateSurveyInDB
       const dbUpdates: {
@@ -679,110 +684,145 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
 
       console.log("Data yang dikirim ke database:", JSON.stringify(dbUpdates, null, 2))
 
-      try {
-      // Update database
-        const updatedSurvey = await updateSurveyInDB(id, dbUpdates)
-        console.log("Survey updated successfully in database:", updatedSurvey)
+      // Buat fungsi untuk menangani proses update secara terpisah
+      const performUpdate = async () => {
+        try {
+          // Panggil API updateSurveyInDB dengan retry mechanism
+          let retries = 0;
+          const maxRetries = 2;
+          let updatedSurvey = null;
+          let lastError = null;
+
+          while (retries <= maxRetries && !updatedSurvey) {
+            try {
+              updatedSurvey = await updateSurveyInDB(id, dbUpdates);
+              console.log("Survey updated successfully in database:", updatedSurvey);
+              break;
+            } catch (error) {
+              lastError = error;
+              console.warn(`Update attempt ${retries + 1} failed:`, error);
+              retries++;
+
+              // Tunggu sebentar sebelum mencoba lagi
+              if (retries <= maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            }
+          }
+
+          if (!updatedSurvey) {
+            throw lastError || new Error("Gagal memperbarui survei setelah beberapa percobaan");
+          }
+
+          return updatedSurvey;
+        } catch (error) {
+          console.error("Error updating survey in database:", error);
+          throw error;
+        }
+      };
+
+      // Jalankan update utama
+      const updatedSurvey = await performUpdate();
 
       // Update indicators jika ada dalam updates
-        if (updates.indicators && updates.indicators.length > 0) {
-          console.log("Updating indicators:", updates.indicators.length)
+      if (updates.indicators && updates.indicators.length > 0) {
+        console.log("Updating indicators:", updates.indicators.length)
 
-          try {
-            // Dapatkan semua indikator yang ada dari database
-            const { data: existingIndicators, error } = await supabaseClient
-              .from('indicators')
-              .select('id')
-              .eq('survey_id', id);
+        try {
+          // Dapatkan semua indikator yang ada dari database
+          const { data: existingIndicators, error } = await supabaseClient
+            .from('indicators')
+            .select('id')
+            .eq('survey_id', id);
 
-            if (error) {
-              console.error("Error fetching existing indicators:", error);
-              throw error;
-            }
-
-            console.log("Existing indicators:", existingIndicators?.length || 0);
-
-            // Buat map untuk indikator yang ada
-            const existingIndicatorIds = new Set();
-            if (existingIndicators) {
-              existingIndicators.forEach(ind => {
-                existingIndicatorIds.add(ind.id);
-              });
-            }
-
-            // Proses setiap indikator
-            for (const indicator of updates.indicators) {
-              if (indicator.id && existingIndicatorIds.has(indicator.id)) {
-                // Update indikator yang ada
-                console.log(`Updating existing indicator: ${indicator.id}`);
-                const { error } = await supabaseClient
-                  .from('indicators')
-                  .update({
-                    name: indicator.title,
-                    description: indicator.description || '',
-                    weight: isWeightedSurvey ? (indicator.weight || 1) : 1
-                  })
-                  .eq('id', indicator.id);
-
-                if (error) {
-                  console.error(`Error updating indicator ${indicator.id}:`, error);
-                  continue;
-                }
-
-                // Update pertanyaan jika ada
-                await updateQuestionsForIndicator(indicator, isWeightedSurvey);
-              } else {
-                // Tambahkan indikator baru
-                console.log(`Adding new indicator: ${indicator.title}`);
-                const { data: newIndicator, error } = await supabaseClient
-                  .from('indicators')
-                  .insert({
-                    survey_id: id,
-                    name: indicator.title,
-                    description: indicator.description || '',
-                    weight: isWeightedSurvey ? (indicator.weight || 1) : 1
-                  })
-                  .select()
-                  .single();
-
-                if (error) {
-                  console.error(`Error adding indicator ${indicator.title}:`, error);
-                  continue;
-                }
-
-                // Tambahkan pertanyaan untuk indikator baru
-                if (newIndicator && indicator.questions && indicator.questions.length > 0) {
-                  for (const question of indicator.questions) {
-                    await addQuestionForIndicator(newIndicator.id, question, isWeightedSurvey);
-                  }
-                }
-              }
-            }
-
-            // Hapus indikator yang tidak ada lagi dalam updates (opsional)
-            const currentIndicatorIds = updates.indicators.map(ind => ind.id).filter(Boolean);
-            const indicatorsToDelete = Array.from(existingIndicatorIds)
-              .filter(id => !currentIndicatorIds.includes(id as string));
-
-            if (indicatorsToDelete.length > 0) {
-              console.log(`Deleting ${indicatorsToDelete.length} removed indicators`);
-              for (const indId of indicatorsToDelete) {
-                const { error } = await supabaseClient
-                  .from('indicators')
-                  .delete()
-                  .eq('id', indId);
-
-                if (error) {
-                  console.error(`Error deleting indicator ${indId}:`, error);
-                }
-              }
-            }
-
-            console.log("Indicator update completed successfully");
-          } catch (indicatorError) {
-            console.error("Error updating indicators:", indicatorError);
-            toast.warning("Survei berhasil diperbarui tetapi terjadi masalah dengan pembaruan indikator");
+          if (error) {
+            console.error("Error fetching existing indicators:", error);
+            throw error;
           }
+
+          console.log("Existing indicators:", existingIndicators?.length || 0);
+
+          // Buat map untuk indikator yang ada
+          const existingIndicatorIds = new Set();
+          if (existingIndicators) {
+            existingIndicators.forEach(ind => {
+              existingIndicatorIds.add(ind.id);
+            });
+          }
+
+          // Proses setiap indikator
+          for (const indicator of updates.indicators) {
+            if (indicator.id && existingIndicatorIds.has(indicator.id)) {
+              // Update indikator yang ada
+              console.log(`Updating existing indicator: ${indicator.id}`);
+              const { error } = await supabaseClient
+                .from('indicators')
+                .update({
+                  name: indicator.title,
+                  description: indicator.description || '',
+                  weight: isWeightedSurvey ? (indicator.weight || 1) : 1
+                })
+                .eq('id', indicator.id);
+
+              if (error) {
+                console.error(`Error updating indicator ${indicator.id}:`, error);
+                continue;
+              }
+
+              // Update pertanyaan jika ada
+              await updateQuestionsForIndicator(indicator, isWeightedSurvey);
+            } else {
+              // Tambahkan indikator baru
+              console.log(`Adding new indicator: ${indicator.title}`);
+              const { data: newIndicator, error } = await supabaseClient
+                .from('indicators')
+                .insert({
+                  survey_id: id,
+                  name: indicator.title,
+                  description: indicator.description || '',
+                  weight: isWeightedSurvey ? (indicator.weight || 1) : 1
+                })
+                .select()
+                .single();
+
+              if (error) {
+                console.error(`Error adding indicator ${indicator.title}:`, error);
+                continue;
+              }
+
+              // Tambahkan pertanyaan untuk indikator baru
+              if (newIndicator && indicator.questions && indicator.questions.length > 0) {
+                for (const question of indicator.questions) {
+                  await addQuestionForIndicator(newIndicator.id, question, isWeightedSurvey);
+                }
+              }
+            }
+          }
+
+          // Hapus indikator yang tidak ada lagi dalam updates (opsional)
+          const currentIndicatorIds = updates.indicators.map(ind => ind.id).filter(Boolean);
+          const indicatorsToDelete = Array.from(existingIndicatorIds)
+            .filter(id => !currentIndicatorIds.includes(id as string));
+
+          if (indicatorsToDelete.length > 0) {
+            console.log(`Deleting ${indicatorsToDelete.length} removed indicators`);
+            for (const indId of indicatorsToDelete) {
+              const { error } = await supabaseClient
+                .from('indicators')
+                .delete()
+                .eq('id', indId);
+
+              if (error) {
+                console.error(`Error deleting indicator ${indId}:`, error);
+              }
+            }
+          }
+
+          console.log("Indicator update completed successfully");
+        } catch (indicatorError) {
+          console.error("Error updating indicators:", indicatorError);
+          toast.warning("Survei berhasil diperbarui tetapi terjadi masalah dengan pembaruan indikator");
+        }
       }
 
       // Update state lokal
@@ -799,30 +839,28 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
 
       // Refresh data survey setelah update
       console.log("Refreshing survey data after update...")
-      await fetchAllSurveys()
 
-      // Jika ada currentSurvey dan ID-nya cocok, update currentSurvey
-      if (currentSurvey && currentSurvey.id === id) {
-        // Get fresh data from the updated surveys
-        const updatedSurvey = await getSurvey(id)
-        setCurrentSurvey(updatedSurvey || null)
+      try {
+        await fetchAllSurveys();
+
+        // Jika ada currentSurvey dan ID-nya cocok, update currentSurvey
+        if (currentSurvey && currentSurvey.id === id) {
+          // Mendapatkan data terbaru dari database
+          const refreshedSurvey = await getSurvey(id);
+          if (refreshedSurvey) {
+            setCurrentSurvey(refreshedSurvey);
+            console.log("Current survey refreshed with latest data");
+          }
+        }
+      } catch (refreshError) {
+        console.error("Error refreshing survey data:", refreshError);
+        // Lanjutkan proses meskipun refresh gagal
       }
 
       toast.success("Survei berhasil diperbarui")
       setLoading(false)
-      } catch (updateError) {
-        console.error("Error updating survey in database:", updateError)
+      return updatedSurvey;
 
-        let errorMessage = "Gagal memperbarui survei";
-        if (updateError instanceof Error) {
-          errorMessage += `: ${updateError.message}`;
-        }
-
-        setError(errorMessage)
-        setLoading(false)
-        toast.error(errorMessage)
-        throw updateError
-      }
     } catch (err) {
       console.error("Error updating survey:", err)
       setError("Gagal memperbarui survei")

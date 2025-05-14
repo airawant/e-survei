@@ -12,7 +12,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { v4 as uuidv4 } from "uuid"
 
 interface SurveyQuestionsTabProps {
   surveyId: string
@@ -35,7 +34,6 @@ interface Question {
   required: boolean
   options: string[]
   weight: number
-  order: number
   [key: string]: any
 }
 
@@ -59,8 +57,7 @@ export default function SurveyQuestionsTab({ surveyId }: SurveyQuestionsTabProps
         questions: indicator.questions.map(question => ({
           ...question,
           description: (question as any).description ?? "",
-          options: question.options ?? [],
-          order: question.order || 0
+          options: question.options ?? []
         }))
       }));
 
@@ -108,27 +105,28 @@ export default function SurveyQuestionsTab({ surveyId }: SurveyQuestionsTabProps
   }
 
   const handleAddQuestion = (indicatorId: string) => {
-    const updatedIndicators = [...indicators]
-    const indicator = updatedIndicators.find(ind => ind.id === indicatorId)
+    const updatedIndicators = indicators.map(ind => {
+      if (ind.id === indicatorId) {
+        return {
+          ...ind,
+          questions: [
+            ...ind.questions,
+            {
+              id: `q-${Date.now()}`,
+              text: `Pertanyaan ${ind.questions.length + 1}`,
+              description: "",
+              type: "likert-4",
+              required: true,
+              options: [],
+              weight: 1
+            }
+          ]
+        }
+      }
+      return ind
+    })
 
-    if (indicator) {
-      const questions = [...indicator.questions]
-      const newQuestionOrder = questions.length // gunakan jumlah pertanyaan saat ini sebagai nilai order
-
-      questions.push({
-        id: uuidv4(),
-        text: "",
-        description: "",
-        type: "likert-4",
-        required: true,
-        options: [],
-        weight: 1,
-        order: newQuestionOrder // tambahkan field order dengan nilai yang benar
-      })
-
-      indicator.questions = questions
-      setIndicators(updatedIndicators)
-    }
+    setIndicators(updatedIndicators)
   }
 
   const handleRemoveQuestion = (indicatorId: string, questionId: string) => {
@@ -223,23 +221,9 @@ export default function SurveyQuestionsTab({ surveyId }: SurveyQuestionsTabProps
 
     if (indicator) {
       const questions = [...indicator.questions]
-
-      // Tukar posisi pertanyaan
       const temp = questions[questionIndex]
       questions[questionIndex] = questions[questionIndex - 1]
       questions[questionIndex - 1] = temp
-
-      // Perbarui nilai order untuk mencerminkan urutan baru
-      if (questions[questionIndex].order !== undefined && questions[questionIndex - 1].order !== undefined) {
-        const tempOrder = questions[questionIndex].order
-        questions[questionIndex].order = questions[questionIndex - 1].order
-        questions[questionIndex - 1].order = tempOrder
-      } else {
-        // Jika nilai order belum ada, tetapkan berdasarkan indeks baru
-        questions.forEach((q, idx) => {
-          q.order = idx
-        })
-      }
 
       indicator.questions = questions
       setIndicators(updatedIndicators)
@@ -255,23 +239,9 @@ export default function SurveyQuestionsTab({ surveyId }: SurveyQuestionsTabProps
 
     if (indicatorToUpdate) {
       const questions = [...indicatorToUpdate.questions]
-
-      // Tukar posisi pertanyaan
       const temp = questions[questionIndex]
       questions[questionIndex] = questions[questionIndex + 1]
       questions[questionIndex + 1] = temp
-
-      // Perbarui nilai order untuk mencerminkan urutan baru
-      if (questions[questionIndex].order !== undefined && questions[questionIndex + 1].order !== undefined) {
-        const tempOrder = questions[questionIndex].order
-        questions[questionIndex].order = questions[questionIndex + 1].order
-        questions[questionIndex + 1].order = tempOrder
-      } else {
-        // Jika nilai order belum ada, tetapkan berdasarkan indeks baru
-        questions.forEach((q, idx) => {
-          q.order = idx
-        })
-      }
 
       indicatorToUpdate.questions = questions
       setIndicators(updatedIndicators)

@@ -626,12 +626,12 @@ export async function addQuestion(question: {
     // Membuat objek data untuk insert dengan nilai-nilai yang sudah disanitasi
     const questionData = {
       indicator_id: question.indicator_id.trim(),
-      text: question.text.trim(), // Text sudah di-trim tapi tidak diubah/sanitized untuk menjaga karakter khusus
+      text: question.text.trim(),
       type: question.type || 'likert', // Default ke likert jika tidak ada
       required: question.required !== undefined ? question.required : true, // Default ke true
       options: validOptions,
       weight: sanitizedWeight,
-      order: typeof question.order === 'number' && !isNaN(question.order) ? question.order : 0 // Default ke 0 bukan null
+      order: typeof question.order === 'number' && !isNaN(question.order) ? question.order : null
     };
 
     console.log("Question data to insert:", JSON.stringify(questionData, null, 2));
@@ -655,24 +655,6 @@ export async function addQuestion(question: {
       throw new Error(`Gagal memverifikasi indicator ID: ${indicatorCheckError instanceof Error ? indicatorCheckError.message : 'Unknown error'}`);
     }
 
-    // Jika order tidak ditentukan, ambil jumlah pertanyaan saat ini dan tetapkan sebagai urutan selanjutnya
-    if (!question.order) {
-      try {
-        const { data: existingQuestions, error: countError } = await supabaseClient
-          .from('questions')
-          .select('id')
-          .eq('indicator_id', questionData.indicator_id);
-
-        if (!countError && existingQuestions) {
-          questionData.order = existingQuestions.length;
-          console.log(`Order tidak ditentukan, menggunakan nilai: ${questionData.order}`);
-        }
-      } catch (countError) {
-        console.warn("Error mendapatkan jumlah pertanyaan:", countError);
-        // Lanjutkan dengan nilai default jika terjadi error
-      }
-    }
-
     // Tambahkan pertanyaan ke database
     try {
       const { data, error } = await supabaseClient
@@ -686,34 +668,6 @@ export async function addQuestion(question: {
         console.error("Error code:", error.code);
         console.error("Error message:", error.message);
         console.error("Error details:", error.details);
-
-        // Jika error terkait karakter khusus, coba encode teks
-        if (error.message && (error.message.includes("character") || error.message.includes("syntax"))) {
-          console.log("Mencoba lagi dengan encoding teks pertanyaan...");
-
-          // Buat salinan questionData dan encode teks pertanyaan
-          const encodedData = {
-            ...questionData,
-            text: encodeURIComponent(questionData.text).replace(/%20/g, " ")
-          };
-
-          console.log("Menggunakan data ter-encode:", encodedData);
-
-          const { data: encodedResult, error: encodedError } = await supabaseClient
-            .from('questions')
-            .insert([encodedData])
-            .select()
-            .single();
-
-          if (encodedError) {
-            console.error("Error masih terjadi setelah encoding:", encodedError);
-            throw encodedError;
-          }
-
-          console.log(`Question added successfully after encoding with ID: ${encodedResult.id}`);
-          return encodedResult;
-        }
-
         throw error;
       }
 
@@ -770,86 +724,15 @@ export async function getQuestionsByIndicatorId(indicatorId: string) {
 
 // Memperbarui pertanyaan
 export async function updateQuestion(id: string, updates: Partial<Omit<Question, 'id' | 'created_at' | 'updated_at'>>) {
-  try {
-    console.log(`Updating question with ID: ${id}`);
+  const { data, error } = await supabaseClient
+    .from('questions')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
 
-    const { data: existingQuestion, error: fetchError } = await supabaseClient
-      .from('questions')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) {
-      console.error(`Error fetching existing question (${id}):`, fetchError);
-      throw fetchError;
-    }
-
-    if (!existingQuestion) {
-      throw new Error(`Question with ID ${id} not found`);
-    }
-
-    // Buat objek update dengan nilai-nilai yang ditentukan
-    const updateData: any = { ...updates };
-
-    // Jika ada update teks pertanyaan, pastikan di-trim tapi tidak di-sanitize
-    if (updateData.text) {
-      updateData.text = updateData.text.trim();
-    }
-
-    // Jika update options, konversi ke format yang benar
-    if (updateData.options) {
-      updateData.options = Array.isArray(updateData.options) ? updateData.options : [];
-    }
-
-    console.log(`Update data:`, JSON.stringify(updateData, null, 2));
-
-    const { data, error } = await supabaseClient
-      .from('questions')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error(`Error updating question (${id}):`, error);
-
-      // Jika error terkait karakter khusus, coba encode teks pertanyaan
-      if (error.message && (error.message.includes("character") || error.message.includes("syntax")) && updateData.text) {
-        console.log("Mencoba lagi dengan encoding teks pertanyaan...");
-
-        // Encode teks pertanyaan
-        const encodedData = {
-          ...updateData,
-          text: encodeURIComponent(updateData.text).replace(/%20/g, " ")
-        };
-
-        console.log("Menggunakan data ter-encode:", encodedData);
-
-        const { data: encodedResult, error: encodedError } = await supabaseClient
-          .from('questions')
-          .update(encodedData)
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (encodedError) {
-          console.error("Error masih terjadi setelah encoding:", encodedError);
-          throw encodedError;
-        }
-
-        console.log(`Question updated successfully after encoding with ID: ${encodedResult.id}`);
-        return encodedResult;
-      }
-
-      throw error;
-    }
-
-    console.log(`Question with ID ${id} updated successfully`);
-    return data;
-  } catch (error) {
-    console.error(`Error in updateQuestion:`, error);
-    throw error;
-  }
+  if (error) throw error;
+  return data;
 }
 
 // Menghapus pertanyaan
