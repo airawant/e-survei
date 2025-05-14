@@ -21,7 +21,7 @@ import {
   deleteSurvey as deleteSurveyInDB,
   toggleSurveyActiveInDB,
   getAllSurveysWithDetails,
-  saveResponse as saveResponseInDB,
+  saveResponse as saveResponseFromDB,
   getResponsesBySurveyId,
   getSurveyStatistics,
   getSurveyDetailedStatistics,
@@ -39,6 +39,66 @@ const defaultSurveyProgress: SurveyProgress = {
 }
 
 const SupabaseSurveyContext = createContext<SurveyContextType | undefined>(undefined)
+
+/**
+ * Definisi local fungsi untuk menyimpan respons survey dengan penanganan error yang lebih baik
+ */
+async function saveResponseInDB(responseData: {
+  survey_id: string;
+  respondent_id: string;
+  answers: { question_id: string; score: number }[];
+  periode_survei?: string;
+}) {
+  try {
+    console.log("Memulai penyimpanan respons ke database...", {
+      survey_id: responseData.survey_id,
+      respondent_id: responseData.respondent_id,
+      answers_count: responseData.answers.length,
+      periode_survei: responseData.periode_survei
+    });
+
+    // Mulai transaksi dengan menyimpan respon utama
+    const { data: response, error: responseError } = await supabaseClient
+      .from('responses')
+      .insert([{
+        survey_id: responseData.survey_id,
+        respondent_id: responseData.respondent_id,
+        periode_survei: responseData.periode_survei || null // Tambahkan periode_survei ke data yang disimpan
+      }])
+      .select()
+      .single();
+
+    if (responseError) {
+      console.error("Error saat menyimpan respons:", responseError);
+      throw responseError;
+    }
+
+    // Menyiapkan jawaban untuk disisipkan dengan response_id yang baru dibuat
+    const answersToInsert = responseData.answers.map(answer => ({
+      response_id: response.id,
+      question_id: answer.question_id,
+      score: answer.score
+    }));
+
+    console.log(`Menyimpan ${answersToInsert.length} jawaban untuk respons ID: ${response.id}`);
+
+    // Menyimpan semua jawaban
+    const { error: answersError } = await supabaseClient
+      .from('answers')
+      .insert(answersToInsert);
+
+    if (answersError) {
+      console.error("Error saat menyimpan jawaban:", answersError);
+      throw answersError;
+    }
+
+    console.log("Berhasil menyimpan respons dan jawaban ke database");
+    return response;
+  } catch (error) {
+    console.error("Error dalam saveResponseInDB:", error);
+    throw error;
+  }
+}
 
 export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) => {
   // State utama
@@ -1094,6 +1154,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
   const submitSurveyResponse = useCallback(async (data: Omit<SurveyResponse, "id" | "submittedAt" | "isComplete">) => {
     try {
       setLoading(true)
+      console.log("Memulai proses pengiriman respons survei...")
 
       // Buat objek respons lengkap
       const completedResponse: SurveyResponse = {
@@ -1258,8 +1319,16 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
         periode_survei // Tambahkan periode survei ke saveData
       }
 
-      // Simpan respons ke database
-      const response = await saveResponseInDB(saveData);
+      // Simpan respons ke database dengan penanganan error yang lebih baik
+      let response;
+      try {
+        console.log("Memanggil saveResponseInDB dengan data:", JSON.stringify(saveData).substring(0, 200) + "...");
+        response = await saveResponseInDB(saveData);
+        console.log("Respons berhasil disimpan dengan ID:", response.id);
+      } catch (error: any) {
+        console.error("Error saat menyimpan respons ke database:", error);
+        throw new Error(`Gagal menyimpan respons: ${error.message || 'Koneksi database error'}`);
+      }
 
       // 3. Simpan data demografis ke tabel demographic_responses
       if (completedResponse.demographicData && completedResponse.demographicData.length > 0) {
