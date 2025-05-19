@@ -177,7 +177,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       console.log("Mengambil semua respons survei dari database...")
 
       // Simpan semua respons yang diambil
-      let allResponses: SurveyResponse[] = [];
+      const allResponses: SurveyResponse[] = [];
 
       // Ambil respons untuk setiap survei
       for (const surveyId of surveyIds) {
@@ -213,7 +213,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
                   submittedAt: new Date(response.created_at),
                   isComplete: true,
                   demographicData: [],
-                  answers: response.answers.map((a: any) => ({
+                  answers: response.answers.map((a: { question_id: string; score: number }) => ({
                     questionId: a.question_id,
                     value: a.score
                   }))
@@ -229,9 +229,8 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
                   demographic_fields (*)
                 `)
                 .eq('response_id', response.id);
-
               // Format data demografis ke format yang digunakan aplikasi
-              const formattedDemographicData = demographicData ? demographicData.map((d: any) => ({
+              const formattedDemographicData = demographicData ? demographicData.map((d: { field_id: string; value: string }) => ({
                 fieldId: d.field_id,
                 value: d.value
               })) : [];
@@ -243,7 +242,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
                 submittedAt: new Date(response.created_at),
                 isComplete: true,
                 demographicData: formattedDemographicData,
-                answers: response.answers.map((a: any) => ({
+                answers: response.answers.map((a: { question_id: string; score: number }) => ({
                   questionId: a.question_id,
                   value: a.score
                 }))
@@ -871,16 +870,12 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
   }, [currentSurvey, setSurveys, fetchAllSurveys, getSurvey])
 
   // Helper function untuk memperbarui pertanyaan dalam indikator
-  const updateQuestionsForIndicator = async (indicator: any, isWeighted: boolean) => {
+  const updateQuestionsForIndicator = async (indicator: Indicator, isWeighted: boolean) => {
     try {
       if (!indicator.questions || indicator.questions.length === 0) {
         console.log(`Tidak ada pertanyaan untuk diperbarui pada indikator ${indicator.id}`);
         return;
       }
-
-      console.log(`Memperbarui ${indicator.questions.length} pertanyaan untuk indikator ${indicator.id} (${indicator.title || indicator.name})...`);
-      console.log(`Status survey weighted: ${isWeighted}`);
-
       // Dapatkan semua pertanyaan yang ada untuk indikator ini
       const { data: existingQuestions, error } = await supabaseClient
         .from('questions')
@@ -934,9 +929,9 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       console.log(`Hasil pembaruan pertanyaan - Diperbarui: ${updatedCount}, Ditambahkan: ${addedCount}, Gagal: ${errorCount}`);
 
       // Hapus pertanyaan yang tidak ada lagi (opsional)
-      const currentQuestionIds = indicator.questions.map((q: any) => q.id).filter(Boolean);
+      const currentQuestionIds = indicator.questions.map((q: Question) => q.id).filter(Boolean);
       const questionsToDelete = Array.from(existingQuestionIds)
-        .filter(id => !currentQuestionIds.includes(id as string));
+        .filter((id: unknown) => !currentQuestionIds.includes(id as string));
 
       if (questionsToDelete.length > 0) {
         console.log(`Menghapus ${questionsToDelete.length} pertanyaan yang tidak ada lagi dari indikator ${indicator.id}`);
@@ -969,7 +964,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
   }
 
   // Helper function untuk memperbarui pertanyaan
-  const updateQuestionInDB = async (questionId: string, question: any, isWeighted: boolean) => {
+  const updateQuestionInDB = async (questionId: string, question: Question, isWeighted: boolean) => {
     try {
       console.log(`Memperbarui pertanyaan ${questionId}`);
 
@@ -1014,7 +1009,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
   }
 
   // Helper function untuk menambahkan pertanyaan baru
-  const addQuestionForIndicator = async (indicatorId: string, question: any, isWeighted: boolean) => {
+  const addQuestionForIndicator = async (indicatorId: string, question: Question, isWeighted: boolean) => {
     try {
       console.log(`Menambahkan pertanyaan baru ke indikator ${indicatorId}: "${question.text?.substring(0, 30)}..."`);
 
@@ -1209,21 +1204,48 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
 
       // Ekstrak informasi dasar responden dari data demografis (jika ada)
       if (completedResponse.demographicData && completedResponse.demographicData.length > 0) {
-        // Cari field untuk nama, email, dan telepon berdasarkan konvensi penamaan field
-        const nameField = completedResponse.demographicData.find(
-          d => d.fieldId.toLowerCase().includes('name') || d.fieldId.toLowerCase().includes('nama')
-        );
-        const emailField = completedResponse.demographicData.find(
-          d => d.fieldId.toLowerCase().includes('email')
-        );
-        const phoneField = completedResponse.demographicData.find(
-          d => d.fieldId.toLowerCase().includes('phone') || d.fieldId.toLowerCase().includes('telepon')
-        );
+        // Cari field demografi dengan label "Nama Lengkap"
+        // Dapatkan semua field demografis untuk survei ini
+        const { data: demographicFields } = await supabaseClient
+          .from('demographic_fields')
+          .select('*')
+          .eq('survey_id', completedResponse.surveyId);
+        
+        if (demographicFields && demographicFields.length > 0) {
+          // Cari field dengan label "Nama Lengkap"
+          const fullNameField = demographicFields.find(field => 
+            field.label === "Nama Lengkap" || field.label === "Nama" || field.label === "Full Name");
+          
+          if (fullNameField) {
+            // Cari nilai dari field tersebut dalam demographicData
+            const fullNameData = completedResponse.demographicData.find(item => item.fieldId === fullNameField.id);
+            if (fullNameData && fullNameData.value) {
+              name = String(fullNameData.value);
+              console.log("Nama responden dari field Nama Lengkap:", name);
+            }
+          }
+        }
+        
+        // Jika tidak menemukan field Nama Lengkap, gunakan cara lama sebagai fallback
+        if (name === 'Anonymous') {
+          // Cari field untuk nama, email, dan telepon berdasarkan konvensi penamaan field
+          const nameField = completedResponse.demographicData.find(
+            d => d.fieldId.toLowerCase().includes('name') || d.fieldId.toLowerCase().includes('nama')
+          );
+          const emailField = completedResponse.demographicData.find(
+            d => d.fieldId.toLowerCase().includes('email')
+          );
+          const phoneField = completedResponse.demographicData.find(
+            d => d.fieldId.toLowerCase().includes('phone') || d.fieldId.toLowerCase().includes('telepon')
+          );
 
-        if (nameField) name = String(nameField.value);
-        if (emailField) email = String(emailField.value);
-        if (phoneField) phone = String(phoneField.value);
+          if (nameField) name = String(nameField.value);
+          if (emailField) email = String(emailField.value);
+          if (phoneField) phone = String(phoneField.value);
+        }
       }
+      
+      console.log("Respondent name yang akan disimpan:", name);
 
       // Ambil informasi periode survei dari currentSurvey atau survey yang sedang dikerjakan
       const surveyForPeriod = currentSurvey || surveys.find(s => s.id === completedResponse.surveyId);
@@ -1363,9 +1385,10 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
         console.log("Memanggil saveResponseInDB dengan data:", JSON.stringify(saveData).substring(0, 200) + "...");
         response = await saveResponseInDB(saveData);
         console.log("Respons berhasil disimpan dengan ID:", response.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error saat menyimpan respons ke database:", error);
-        throw new Error(`Gagal menyimpan respons: ${error.message || 'Koneksi database error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Koneksi database error';
+        throw new Error(`Gagal menyimpan respons: ${errorMessage}`);
       }
 
       // 3. Simpan data demografis ke tabel demographic_responses
@@ -1480,7 +1503,12 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
           indicatorTitle: string;
           score: number;
           weight: number;
-          questions: any[];
+          questions: Array<{
+            questionId: string;
+            questionText: string;
+            averageScore: number;
+            responseCount: number;
+          }>;
         }) => ({
           id: indicator.indicatorId,
           title: indicator.indicatorTitle,

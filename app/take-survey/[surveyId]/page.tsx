@@ -253,7 +253,7 @@ const getPeriodeLabel = (survey: Survey | null): string => {
 
     if (type === 'quarterly') {
       // Ekstrak nomor quarter dari nilai (Q1, Q2, Q3, Q4)
-      let quarterNum = periodValue.replace('Q', '');
+      const quarterNum = periodValue.replace('Q', '');
 
       // Validasi quarterNum (pastikan antara 1-4)
       if (!['1', '2', '3', '4'].includes(quarterNum)) {
@@ -266,7 +266,7 @@ const getPeriodeLabel = (survey: Survey | null): string => {
     }
     else if (type === 'semester') {
       // Ekstrak nomor semester dari nilai (S1, S2)
-      let semesterNum = periodValue.replace('S', '');
+      const semesterNum = periodValue.replace('S', '');
 
       // Validasi semesterNum (pastikan 1 atau 2)
       if (!['1', '2'].includes(semesterNum)) {
