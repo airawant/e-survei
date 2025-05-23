@@ -125,14 +125,11 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
 
   // Validasi tambahan untuk memastikan semua nilai yang diperlukan tersedia
   if (!type || !year) {
-    console.log("Tipe periode atau tahun tidak tersedia", { type, year });
-    return 'Periode tidak lengkap';
+   return 'Periode tidak lengkap';
   }
 
   // Gunakan nilai period dari database jika tersedia
   if (periodValue) {
-    console.log(`Menggunakan nilai period langsung dari database: ${periodValue}`);
-
     // Handle kasus untuk format periode
     if (type === 'quarterly') {
       // Ekstrak nomor quarter dari nilai (Q1, Q2, Q3, Q4)
@@ -140,7 +137,6 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
 
       // Validasi quarterNum (pastikan antara 1-4)
       if (!['1', '2', '3', '4'].includes(quarterNum)) {
-        console.log(`PERINGATAN: Nilai kuartal tidak valid (${quarterNum}), menggunakan Q1`);
         quarterNum = '1';
       }
 
@@ -153,7 +149,6 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
 
       // Validasi semesterNum (pastikan 1 atau 2)
       if (!['1', '2'].includes(semesterNum)) {
-        console.log(`PERINGATAN: Nilai semester tidak valid (${semesterNum}), menggunakan S1`);
         semesterNum = '1';
       }
 
@@ -165,16 +160,10 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
     }
   }
 
-  // Fallback ke logika lama jika nilai period tidak tersedia dari database
-  console.log("Nilai period tidak tersedia dari database, menggunakan fallback");
-
   // Handle kasus khusus ketika periode adalah 'quarterly' tetapi kuartal tidak didefinisikan
   if (type === 'quarterly') {
     // Default ke kuartal 1 hanya jika quarter benar-benar tidak ada
     let quarterNum = quarter ? String(quarter).replace('Q', '') : '1';
-
-    console.log(`Menggunakan quarterNum: ${quarterNum} dari nilai asli quarter:`, quarter);
-
     // Jika ada nilai quarter, proses dengan benar - pastikan kita menggunakan nilai yang sudah ada
     if (quarter) {
       if (typeof quarter === 'string') {
@@ -189,7 +178,6 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
 
     // Validasi quarterNum (pastikan antara 1-4)
     if (!['1', '2', '3', '4'].includes(quarterNum)) {
-      console.log(`PERINGATAN: Nilai kuartal tidak valid (${quarterNum}), menggunakan Q1`);
       quarterNum = '1';
     }
 
@@ -213,8 +201,7 @@ const formatPeriodeSurvei = (survey: Survey | null): string => {
 
     // Validasi semesterNum (pastikan 1 atau 2)
     if (!['1', '2'].includes(semesterNum)) {
-      console.log(`PERINGATAN: Nilai semester tidak valid (${semesterNum}), menggunakan S1`);
-      semesterNum = '1';
+   semesterNum = '1';
     }
 
     // Format dengan bahasa Indonesia: "Semester 1 2025"
@@ -249,7 +236,6 @@ const getPeriodeLabel = (survey: Survey | null): string => {
 
   // Gunakan nilai period dari database jika tersedia
   if (periodValue) {
-    console.log(`Menggunakan nilai periodValue untuk label: ${periodValue}`);
 
     if (type === 'quarterly') {
       // Ekstrak nomor quarter dari nilai (Q1, Q2, Q3, Q4)

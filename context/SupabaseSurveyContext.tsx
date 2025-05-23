@@ -47,7 +47,7 @@ async function saveResponseInDB(responseData: {
   survey_id: string;
   respondent_id: string;
   answers: { question_id: string; score: number }[];
-  periode_survei?: string;
+  periode_survei: string;
 }) {
   try {
     console.log("Memulai penyimpanan respons ke database...", {
@@ -63,7 +63,7 @@ async function saveResponseInDB(responseData: {
       .insert([{
         survey_id: responseData.survey_id,
         respondent_id: responseData.respondent_id,
-        periode_survei: responseData.periode_survei || null // Tambahkan periode_survei ke data yang disimpan
+        periode_survei: responseData.periode_survei // Pastikan periode_survei disimpan
       }])
       .select()
       .single();
@@ -1189,6 +1189,33 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       setLoading(true)
       console.log("Memulai proses pengiriman respons survei...")
 
+      // Ambil data survei terlebih dahulu untuk mendapatkan periode yang benar
+      const survey = await getSurvey(data.surveyId);
+      if (!survey || !survey.period) {
+        throw new Error("Data survei atau periode tidak ditemukan");
+      }
+
+      // Format periode survei berdasarkan data survei
+      let periode_survei = '';
+      const periodType = survey.period.type || 'quarterly';
+      const periodYear = survey.period.year || new Date().getFullYear();
+
+      if (periodType === 'quarterly') {
+        const quarterValue = survey.period.quarter || '1';
+        periode_survei = `Q${quarterValue}-${periodYear}`;
+      } else if (periodType === 'semester') {
+        const semesterValue = survey.period.semester || '1';
+        periode_survei = `S${semesterValue}-${periodYear}`;
+      } else if (periodType === 'annual') {
+        periode_survei = `TAHUN-${periodYear}`;
+      }
+
+      console.log("Periode survei yang akan disimpan:", {
+        surveyId: data.surveyId,
+        periode: periode_survei,
+        surveyPeriod: survey.period
+      });
+
       // Buat objek respons lengkap
       const completedResponse: SurveyResponse = {
         id: currentResponse?.id || `response-${Date.now()}`,
@@ -1204,152 +1231,28 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
 
       // Ekstrak informasi dasar responden dari data demografis (jika ada)
       if (completedResponse.demographicData && completedResponse.demographicData.length > 0) {
-        // Cari field demografi dengan label "Nama Lengkap"
         // Dapatkan semua field demografis untuk survei ini
         const { data: demographicFields } = await supabaseClient
           .from('demographic_fields')
           .select('*')
           .eq('survey_id', completedResponse.surveyId);
-        
+
         if (demographicFields && demographicFields.length > 0) {
           // Cari field dengan label "Nama Lengkap"
-          const fullNameField = demographicFields.find(field => 
+          const fullNameField = demographicFields.find(field =>
             field.label === "Nama Lengkap" || field.label === "Nama" || field.label === "Full Name");
-          
+
           if (fullNameField) {
             // Cari nilai dari field tersebut dalam demographicData
             const fullNameData = completedResponse.demographicData.find(item => item.fieldId === fullNameField.id);
             if (fullNameData && fullNameData.value) {
               name = String(fullNameData.value);
-              console.log("Nama responden dari field Nama Lengkap:", name);
             }
           }
         }
-        
-        // Jika tidak menemukan field Nama Lengkap, gunakan cara lama sebagai fallback
-        if (name === 'Anonymous') {
-          // Cari field untuk nama, email, dan telepon berdasarkan konvensi penamaan field
-          const nameField = completedResponse.demographicData.find(
-            d => d.fieldId.toLowerCase().includes('name') || d.fieldId.toLowerCase().includes('nama')
-          );
-          const emailField = completedResponse.demographicData.find(
-            d => d.fieldId.toLowerCase().includes('email')
-          );
-          const phoneField = completedResponse.demographicData.find(
-            d => d.fieldId.toLowerCase().includes('phone') || d.fieldId.toLowerCase().includes('telepon')
-          );
-
-          if (nameField) name = String(nameField.value);
-          if (emailField) email = String(emailField.value);
-          if (phoneField) phone = String(phoneField.value);
-        }
-      }
-      
-      console.log("Respondent name yang akan disimpan:", name);
-
-      // Ambil informasi periode survei dari currentSurvey atau survey yang sedang dikerjakan
-      const surveyForPeriod = currentSurvey || surveys.find(s => s.id === completedResponse.surveyId);
-
-      // Debug informasi periode survei dari database
-      console.log("===================== DEBUG PERIODE SURVEI =====================");
-      console.log("Survey ID:", completedResponse.surveyId);
-      console.log("Current Survey:", currentSurvey ? {
-        id: currentSurvey.id,
-        period: currentSurvey.period,
-        period_type: currentSurvey.period?.type,
-        period_quarter: currentSurvey.period?.quarter,
-        period_semester: currentSurvey.period?.semester,
-        period_year: currentSurvey.period?.year
-      } : "null");
-
-      if (surveyForPeriod) {
-        console.log("Survey period info:", {
-          surveyId: surveyForPeriod.id,
-          periodType: surveyForPeriod.period?.type,
-          periodQuarter: surveyForPeriod.period?.quarter,
-          periodSemester: surveyForPeriod.period?.semester,
-          periodYear: surveyForPeriod.period?.year,
-          fullPeriod: surveyForPeriod.period
-        });
-      } else {
-        console.log("Survey for period not found!");
       }
 
-      // Tentukan nilai periode_survei berdasarkan data survei
-      let periode_survei = '';
-
-      if (surveyForPeriod && surveyForPeriod.period) {
-        // Jika ada properti period di survei, gunakan itu
-        const periodType = surveyForPeriod.period.type || 'quarterly';
-        const periodYear = surveyForPeriod.period.year || new Date().getFullYear();
-
-        if (periodType === 'quarterly') {
-          // PERBAIKAN: Pastikan menggunakan nilai quarter yang benar dari database
-          // Ambil nilai quarter dari survei (pastikan sudah dalam format Q1, Q2, dll atau konversi)
-          let quarterValue = surveyForPeriod.period.quarter || 'Q1';
-
-          // Cek apakah nilai quarter sudah memiliki prefiks 'Q'
-          if (!quarterValue.startsWith('Q')) {
-            quarterValue = `Q${quarterValue}`;
-          }
-
-          // Ekstrak angka dari quarter (Q1 -> 1, Q2 -> 2, dll)
-          const quarterNumber = quarterValue.replace('Q', '');
-
-          // Format akhir: Q1-2025 (tanpa spasi)
-          periode_survei = `Q${quarterNumber}-${periodYear}`;
-
-          console.log(`Periode kuartal tersimpan: ${periode_survei} dari quarter ${quarterValue} (raw: ${surveyForPeriod.period.quarter})`);
-        } else if (periodType === 'semester') {
-          // Sama seperti di atas, pastikan format semester benar
-          let semesterValue = surveyForPeriod.period.semester || 'S1';
-
-          // Cek apakah nilai semester sudah memiliki prefiks 'S'
-          if (!semesterValue.startsWith('S')) {
-            semesterValue = `S${semesterValue}`;
-          }
-
-          // Ekstrak angka dari semester (S1 -> 1, S2 -> 2)
-          const semesterNumber = semesterValue.replace('S', '');
-
-          // Format: S1-2025 (tanpa spasi, hanya S bukan SEMESTER)
-          periode_survei = `S${semesterNumber}-${periodYear}`;
-
-          console.log(`Periode semester tersimpan: ${periode_survei} dari semester ${semesterValue} (raw: ${surveyForPeriod.period.semester})`);
-        } else if (periodType === 'annual') {
-          // Format: TAHUN-2025 (tahun saja tidak cukup, tambahkan prefix)
-          periode_survei = `TAHUN-${periodYear}`;
-
-          console.log(`Periode tahunan tersimpan: ${periode_survei}`);
-        } else {
-          // Default format jika tipe tidak dikenali - jangan gunakan tahun saja
-          const currentDate = new Date();
-          const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
-          periode_survei = `Q${currentQuarter}-${periodYear}`;
-          console.log(`Tipe periode tidak dikenali, menggunakan default: ${periode_survei}`);
-        }
-
-        // Jika ada custom label dalam format string, gunakan itu
-        if (typeof surveyForPeriod.period === 'object' && 'custom' in surveyForPeriod.period) {
-          const customLabel = surveyForPeriod.period.custom;
-          if (customLabel && typeof customLabel === 'string') {
-            periode_survei = customLabel;
-            console.log(`Menggunakan label kustom: ${periode_survei}`);
-          }
-        }
-      } else {
-        // Jika tidak ada surveyForPeriod atau period, gunakan kuartal saat ini
-        const currentDate = new Date();
-        const year = currentDate.getFullYear();
-        const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
-        periode_survei = `Q${currentQuarter}-${year}`;
-        console.log(`Periode tidak tersedia, menggunakan kuartal saat ini: ${periode_survei}`);
-      }
-
-      console.log("Periode survei final yang akan disimpan:", periode_survei);
-      console.log("===================== END DEBUG PERIODE SURVEI =====================");
-
-      // Buat responden di database
+      // Buat responden di database dengan periode survei yang benar
       const { data: respondent, error: respondentError } = await supabaseClient
         .from('respondents')
         .insert({
@@ -1357,7 +1260,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
           name,
           email,
           phone,
-          periode_survei // Tambahkan informasi periode survei
+          periode_survei // Gunakan periode yang sudah diformat dengan benar
         })
         .select()
         .single();
@@ -1367,98 +1270,31 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
         throw respondentError;
       }
 
-      // 2. Simpan response dengan respondent_id yang valid
+      // 2. Simpan response dengan respondent_id yang valid dan periode survei yang benar
       const saveData = {
         survey_id: completedResponse.surveyId,
-        respondent_id: respondent.id, // Gunakan UUID valid dari responden yang baru dibuat
+        respondent_id: respondent.id,
         answers: completedResponse.answers.map(a => ({
           question_id: a.questionId,
           score: typeof a.value === 'number' ? a.value :
                  typeof a.value === 'string' ? parseFloat(a.value) || 3 : 3
         })),
-        periode_survei // Tambahkan periode survei ke saveData
+        periode_survei // Gunakan periode yang sudah diformat dengan benar
       }
 
-      // Simpan respons ke database dengan penanganan error yang lebih baik
+      // Simpan respons ke database
       let response;
       try {
-        console.log("Memanggil saveResponseInDB dengan data:", JSON.stringify(saveData).substring(0, 200) + "...");
+        console.log("Memanggil saveResponseInDB dengan data:", {
+          ...saveData,
+          periode_survei
+        });
         response = await saveResponseInDB(saveData);
         console.log("Respons berhasil disimpan dengan ID:", response.id);
       } catch (error: unknown) {
         console.error("Error saat menyimpan respons ke database:", error);
         const errorMessage = error instanceof Error ? error.message : 'Koneksi database error';
         throw new Error(`Gagal menyimpan respons: ${errorMessage}`);
-      }
-
-      // 3. Simpan data demografis ke tabel demographic_responses
-      if (completedResponse.demographicData && completedResponse.demographicData.length > 0) {
-        console.log(`Menyimpan ${completedResponse.demographicData.length} data demografis untuk response ID: ${response.id}`);
-
-        try {
-          // Verifikasi tabel demographic_responses ada
-          const { data: tableCheck, error: tableCheckError } = await supabaseClient
-            .from('demographic_responses')
-            .select('id')
-            .limit(1);
-
-          if (tableCheckError) {
-            console.error("Tabel demographic_responses tidak dapat diakses:", tableCheckError);
-            console.log("Melanjutkan tanpa menyimpan data demografis...");
-            // Lanjutkan tanpa menyimpan data demografis
-          } else {
-            // Tabel ada, lanjutkan penyimpanan
-            const demographicPromises = completedResponse.demographicData?.map(async (item, index) => {
-              try {
-                console.log(`[${index + 1}/${completedResponse.demographicData?.length}] Menyimpan data demografis:`, {
-                  response_id: response.id,
-                  field_id: item.fieldId,
-                  value: String(item.value).substring(0, 500) // Batasi panjang nilai untuk logging
-                });
-
-                // Cek apakah field_id valid
-                const { data: fieldCheck, error: fieldCheckError } = await supabaseClient
-                  .from('demographic_fields')
-                  .select('id')
-                  .eq('id', item.fieldId)
-                  .single();
-
-                if (fieldCheckError || !fieldCheck) {
-                  console.error(`Field ID ${item.fieldId} tidak valid:`, fieldCheckError);
-                  // Lanjutkan proses meskipun field tidak valid
-                  return false;
-                }
-
-                // Simpan ke database dengan parameter yang valid
-                const { data, error } = await supabaseClient
-                  .from('demographic_responses')
-                  .insert({
-                    response_id: response.id,
-                    field_id: item.fieldId,
-                    value: String(item.value).substring(0, 1000) // Batasi panjang untuk mencegah error
-                  });
-                if (error) {
-                  console.error(`Error saving demographic response [${index + 1}/${completedResponse.demographicData?.length || 0}]:`, error);
-                  return false;
-                }
-
-                console.log(`Berhasil menyimpan data demografis [${index + 1}/${completedResponse.demographicData?.length || 0}]`);
-                return true;
-              } catch (demographicError) {
-                console.error(`Error in demographic promise [${index + 1}/${completedResponse.demographicData?.length || 0}]:`, demographicError);
-                return false;
-              }
-            });
-
-            // Gunakan Promise.all sehingga kita bisa menangkap data yang berhasil/gagal
-            const results = await Promise.all(demographicPromises);
-            const successCount = results.filter(Boolean).length;
-            console.log(`Berhasil menyimpan ${successCount}/${completedResponse.demographicData.length} data demografis`);
-          }
-        } catch (err) {
-          console.error("Error checking demographic_responses table:", err);
-          // Lanjutkan tanpa menyimpan data demografis
-        }
       }
 
       // Update state lokal

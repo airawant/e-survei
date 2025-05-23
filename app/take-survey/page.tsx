@@ -144,8 +144,6 @@ const getPeriodeLabel = (survey: Survey): string => {
 
   // Gunakan nilai period dari database
   if (periodValue) {
-    console.log(`Menggunakan nilai periodValue untuk label: ${periodValue}`);
-
     if (type === 'quarterly') {
       // Ekstrak nomor quarter dari nilai (Q1, Q2, Q3, Q4)
       let quarterNum = periodValue.replace('Q', '');
@@ -178,8 +176,6 @@ const getPeriodeLabel = (survey: Survey): string => {
     return '';
   }
 
-  // Fallback ke logika lama jika nilai period tidak tersedia
-  console.log("Nilai periodValue tidak tersedia dari database untuk label, menggunakan fallback");
 
   if (type === 'quarterly') {
     // Default ke kuartal 1 hanya jika quarter benar-benar tidak ada
