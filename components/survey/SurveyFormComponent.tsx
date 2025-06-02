@@ -1178,9 +1178,9 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Survey Title</FormLabel>
+                          <FormLabel>Judul Survei</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter survey title" {...field} />
+                            <Input placeholder="Masukan Judul Survei" {...field} />
                           </FormControl>
                           <FormDescription>A clear, descriptive title for your survey.</FormDescription>
                           <FormMessage />
@@ -1193,11 +1193,11 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
+                          <FormLabel>Deskripsi</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Enter survey description" className="min-h-[100px]" {...field} />
+                            <Textarea placeholder="masukan deskripsi survei" className="min-h-[100px]" {...field} />
                           </FormControl>
-                          <FormDescription>Provide context about the purpose of this survey.</FormDescription>
+                          <FormDescription>survei ini berisi tentang...</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1205,14 +1205,14 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
 
                     <div className="space-y-6">
                       <div className="border rounded-md p-4 space-y-4">
-                        <h3 className="text-base font-medium">Survey Period</h3>
+                        <h3 className="text-base font-medium">Periode Survei</h3>
 
                       <FormField
                         control={form.control}
                           name="period.type"
                         render={({ field }) => (
                           <FormItem>
-                              <FormLabel>Period Type</FormLabel>
+                              <FormLabel>Tipe Periode</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -1274,7 +1274,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                   </FormControl>
                                   <SelectContent>
                                     <SelectItem value="1">Semester 1 (Jan-Jun)</SelectItem>
-                                    <SelectItem value="2">Semester 2 (Jul-Dec)</SelectItem>
+                                    <SelectItem value="2">Semester 2 (Jul-Des)</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -1316,10 +1316,10 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
 
                   <TabsContent value="indicators" className="space-y-6 mt-0">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Survey Indicators</h3>
+                      <h3 className="text-lg font-medium">Indikator Survei</h3>
                       <Button type="button" onClick={handleAddIndicator} variant="outline" size="sm">
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Indicator
+                        Tambah Indikator
                       </Button>
                     </div>
                     <div className="space-y-4">
@@ -1403,7 +1403,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                 </div>
                                 {!expandedIndicators[indicatorIndex] && (
                                   <div className="mt-1 text-sm text-gray-500">
-                                    {questionFields.length} question(s)
+                                    {questionFields.length} pertanyaan
                                   </div>
                                 )}
                               </div>
@@ -1432,7 +1432,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
 
                                   <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                      <h4 className="text-sm font-medium">Questions</h4>
+                                      <h4 className="text-sm font-medium">Pertanyaan</h4>
                                       <Button
                                         type="button"
                                         onClick={() => handleAddQuestion(indicatorIndex)}
@@ -1440,7 +1440,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                         size="sm"
                                       >
                                         <Plus className="mr-2 h-3 w-3" />
-                                        Add Question
+                                        Tambah Pertanyaan
                                       </Button>
                                     </div>
 
@@ -1451,7 +1451,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                       >
                                         <div className="flex justify-between">
                                           <span className="text-xs font-medium text-gray-500">
-                                            Question {questionIndex + 1}
+                                            Pertanyaan {questionIndex + 1}
                                           </span>
                                           <Button
                                             type="button"
@@ -1469,7 +1469,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                           name={`indicators.${indicatorIndex}.questions.${questionIndex}.text`}
                                           render={({ field }) => (
                                             <FormItem>
-                                              <FormLabel className="text-xs">Question Text</FormLabel>
+                                              <FormLabel className="text-xs">Teks Pertanyaan</FormLabel>
                                               <FormControl>
                                                 <Textarea
                                                   {...field}
@@ -1489,7 +1489,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                             name={`indicators.${indicatorIndex}.questions.${questionIndex}.type`}
                                             render={({ field }) => (
                                               <FormItem>
-                                                <FormLabel className="text-xs">Question Type</FormLabel>
+                                                <FormLabel className="text-xs">Tipe Pertanyaan</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                   <FormControl>
                                                     <SelectTrigger className="text-sm">
@@ -1541,7 +1541,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                               <div className="space-y-0.5">
                                                 <FormLabel className="text-xs">Required?</FormLabel>
                                                 <FormDescription className="text-xs">
-                                                  Respondents must answer this question
+                                                  Responden harus mengisi pertanyaan ini
                                                 </FormDescription>
                                               </div>
                                               <FormControl>
@@ -1581,7 +1581,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                                   />
                                                 </FormControl>
                                                 <FormDescription className="text-xs">
-                                                  Enter each option on a new line
+                                                  Tekan Enter untuk membuat list
                                                 </FormDescription>
                                                 <FormMessage />
                                               </FormItem>
@@ -1594,7 +1594,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                     {questionFields.length === 0 && (
                                       <div className="text-center p-4 border border-dashed border-gray-300 rounded-md">
                                         <p className="text-gray-500 text-sm">
-                                          No questions added. Click "Add Question" to create one.
+                                          Tidak ada pertanyaan. Klik "Tambah Pertanyaan" untuk membuat.
                                         </p>
                                       </div>
                                     )}
@@ -1610,25 +1610,24 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
 
                   <TabsContent value="demographics" className="space-y-6 mt-0">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Demographic Fields</h3>
+                      <h3 className="text-lg font-medium">Demografi Kolom</h3>
                       <Button type="button" onClick={handleAddDemographicField} variant="outline" size="sm">
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Field
+                        Tambah Kolom
                       </Button>
                     </div>
 
                     <div className="space-y-4">
                       <div className="text-sm text-gray-500 bg-blue-50 border border-blue-100 rounded-md p-4">
                         <p>
-                          Demographic fields collect information about respondents. This data helps analyze survey
-                          results by different demographic segments.
+                          Kolom Demografi untuk mendapatkan informasi tentang responden berfungsi untuk mengetahui segmen responden.
                         </p>
                       </div>
 
                       {demographicFields.map((field, index) => (
                         <div key={field.id} className="border border-gray-200 rounded-md p-4 space-y-4">
                           <div className="flex justify-between">
-                            <span className="text-xs font-medium text-gray-500">Demographic Field {index + 1}</span>
+                            <span className="text-xs font-medium text-gray-500">Kolom Demografi {index + 1}</span>
                             <Button
                               type="button"
                               onClick={() => removeDemographic(index)}
@@ -1661,7 +1660,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                               name={`demographicFields.${index}.type`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-xs">Field Type</FormLabel>
+                                  <FormLabel className="text-xs">Field Tipe</FormLabel>
                                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
                                       <SelectTrigger className="text-sm">
@@ -1690,7 +1689,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                 <div className="space-y-0.5">
                                   <FormLabel className="text-xs">Required?</FormLabel>
                                   <FormDescription className="text-xs">
-                                    Respondents must answer this question
+                                    Responden harus mengisi
                                   </FormDescription>
                                 </div>
                                 <FormControl>
@@ -1708,7 +1707,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                               name={`demographicFields.${index}.options`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-xs">Options (one per line)</FormLabel>
+                                  <FormLabel className="text-xs">Opsi (one per line)</FormLabel>
                                   <FormControl>
                                     <Textarea
                                       {...field}
@@ -1726,7 +1725,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                       }}
                                     />
                                   </FormControl>
-                                  <FormDescription className="text-xs">Enter each option on a new line</FormDescription>
+                                  <FormDescription className="text-xs">Tekan Enter untuk menambah opsi</FormDescription>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -1742,7 +1741,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
 
             <div className="md:col-span-2 space-y-6">
               <div className="bg-white rounded-lg shadow-subtle p-6 border border-gray-100 sticky top-6">
-                <h3 className="text-lg font-medium mb-6">Survey Settings</h3>
+                <h3 className="text-lg font-medium mb-6">Pengaturan Survei</h3>
 
                 <div className="space-y-6">
                   {!isWeightedSurvey && (
@@ -1785,7 +1784,7 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-md border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel>Activate Survey</FormLabel>
+                          <FormLabel>Activkan Survei</FormLabel>
                           <FormDescription>Make this survey available to respondents</FormDescription>
                         </div>
                         <FormControl>

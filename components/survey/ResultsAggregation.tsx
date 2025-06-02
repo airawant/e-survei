@@ -328,7 +328,6 @@ export function ResultsAggregation({ surveyId }: ResultsAggregationProps) {
         if (currentSurvey && 'demographicFields' in currentSurvey) {
           console.log("Survey has demographic fields data");
 
-          // @ts-ignore: demographicFields might not be in type definition
           const fields = currentSurvey.demographicFields || [];
 
           // Buat mapping dari ID ke label
