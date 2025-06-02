@@ -1291,12 +1291,12 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
         });
         response = await saveResponseInDB(saveData);
         console.log("Respons berhasil disimpan dengan ID:", response.id);
-        
+
         // Tambahkan kode untuk menyimpan data demografi
         if (completedResponse.demographicData && completedResponse.demographicData.length > 0) {
           console.log("Menyimpan data demografi ke tabel demographic_responses...");
           const { saveDemographicResponse } = await import("@/lib/supabase/client");
-          
+
           // Simpan setiap item data demografi
           for (const demoItem of completedResponse.demographicData) {
             try {
@@ -1310,7 +1310,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
               // Lanjutkan meskipun ada error pada satu item
             }
           }
-          
+
           console.log(`Berhasil menyimpan ${completedResponse.demographicData.length} data demografi`);
         }
       } catch (error: unknown) {
