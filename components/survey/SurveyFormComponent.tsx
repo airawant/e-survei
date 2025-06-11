@@ -1564,21 +1564,39 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                               <FormItem>
                                                 <FormLabel className="text-xs">Options (one per line)</FormLabel>
                                                 <FormControl>
-                                                  <Textarea
-                                                    {...field}
-                                                    className="resize-none text-sm"
-                                                    rows={3}
-                                                    placeholder="Enter options (one per line)"
-                                                    value={
-                                                      field.value && Array.isArray(field.value)
-                                                        ? (field.value as string[]).join("\n")
-                                                        : ""
-                                                    }
-                                                    onChange={(e) => {
-                                                      const options = e.target.value.split("\n").filter(Boolean)
-                                                      field.onChange(options)
-                                                    }}
-                                                  />
+                                                <Textarea
+  {...field}
+  className="resize-none text-sm"
+  rows={3}
+  placeholder="Enter options (one per line)"
+  value={field.value && Array.isArray(field.value) ? (field.value as string[]).join("\n") : ""}
+  onChange={(e) => {
+    const options = e.target.value.split("\n").filter(Boolean)
+    field.onChange(options)
+  }}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const value = textarea.value
+      const selectionStart = textarea.selectionStart
+
+      // Sisipkan baris baru pada posisi kursor
+      const newValue = value.slice(0, selectionStart) + "\n" + value.slice(selectionStart)
+
+      // Update nilai textarea
+      textarea.value = newValue
+
+      // Pindahkan kursor ke baris baru
+      textarea.selectionStart = selectionStart + 1
+      textarea.selectionEnd = selectionStart + 1
+
+      // Trigger event onChange untuk memperbarui state
+      const event = new Event('input', { bubbles: true })
+      textarea.dispatchEvent(event)
+    }
+  }}
+/>
                                                 </FormControl>
                                                 <FormDescription className="text-xs">
                                                   Tekan Enter untuk membuat list
@@ -1714,14 +1732,31 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
                                       className="resize-none text-sm"
                                       rows={3}
                                       placeholder="Enter options (one per line)"
-                                      value={
-                                        field.value && Array.isArray(field.value)
-                                          ? (field.value as string[]).join("\n")
-                                          : ""
-                                      }
+                                      value={field.value && Array.isArray(field.value) ? (field.value as string[]).join("\n") : ""}
                                       onChange={(e) => {
-                                        const options = e.target.value.split("\n").filter(Boolean)
+                                        const options = e.target.value
+                                          .split("\n")
+                                          .map(line => line.trim())
+                                          .filter(Boolean)
                                         field.onChange(options)
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault()
+                                          const cursorPosition = e.currentTarget.selectionStart
+                                          const currentValue = e.currentTarget.value
+                                          const newValue =
+                                            currentValue.slice(0, cursorPosition) +
+                                            '\n' +
+                                            currentValue.slice(cursorPosition)
+
+                                          e.currentTarget.value = newValue
+                                          e.currentTarget.selectionStart = cursorPosition + 1
+                                          e.currentTarget.selectionEnd = cursorPosition + 1
+
+                                          const event = new Event('input', { bubbles: true })
+                                          e.currentTarget.dispatchEvent(event)
+                                        }
                                       }}
                                     />
                                   </FormControl>

@@ -237,7 +237,7 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
           </div>
           {respondent.answers.map((answer, idx) => {
             const isTextType = answer.question?.type === 'text';
-            
+
             return (
               <div key={answer.id} className={`grid grid-cols-12 text-sm py-2 ${idx % 2 === 0 ? 'bg-muted/10' : ''} rounded-md`}>
                 <div className="col-span-1 text-xs">{idx + 1}</div>
@@ -268,7 +268,7 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
     if (score >= 2) return 'text-orange-500';
     return 'text-red-500';
   };
-  
+
   const getScoreCategory = (score: number) => {
     if (score >= 5) return 'Sangat Memuaskan';
     if (score >= 4) return 'Memuaskan';
