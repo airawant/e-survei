@@ -723,19 +723,22 @@ export default function TakeSurveyPage({ params }: { params: Promise<{ surveyId:
 
     // Ubah format data pertanyaan
     const processedQuestions: Question[] = [];
-    if (survey.indicators && survey.indicators.length > 0) {
-      survey.indicators.forEach((indicator: IndicatorFromDB) => {
-        if (indicator.questions && indicator.questions.length > 0) {
-          indicator.questions.forEach((question: any) => {
-            processedQuestions.push({
-              ...question,
-              indicatorId: indicator.id,
-              indicatorTitle: indicator.title || (indicator as any).name || 'Indikator'
-            });
-          });
-        }
+if (survey.indicators && survey.indicators.length > 0) {
+  survey.indicators.forEach((indicator: IndicatorFromDB) => {
+    if (indicator.questions && indicator.questions.length > 0) {
+      // Urutkan pertanyaan berdasarkan kolom order
+      const sortedQuestions = [...indicator.questions].sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      sortedQuestions.forEach((question: any) => {
+        processedQuestions.push({
+          ...question,
+          indicatorId: indicator.id,
+          indicatorTitle: indicator.title || (indicator as any).name || 'Indikator'
+        });
       });
     }
+  });
+}
 
     // Update state
     setSurveyData({

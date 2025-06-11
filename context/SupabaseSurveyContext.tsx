@@ -46,7 +46,7 @@ const SupabaseSurveyContext = createContext<SurveyContextType | undefined>(undef
 async function saveResponseInDB(responseData: {
   survey_id: string;
   respondent_id: string;
-  answers: { question_id: string; score: number }[];
+  answers: { question_id: string; score: number; text_value?: string }[];
   periode_survei: string;
 }) {
   try {
@@ -77,7 +77,8 @@ async function saveResponseInDB(responseData: {
     const answersToInsert = responseData.answers.map(answer => ({
       response_id: response.id,
       question_id: answer.question_id,
-      score: answer.score
+      score: answer.score,
+      text_answer: answer.text_value // Tambahkan text_value ke kolom text_answer
     }));
 
     console.log(`Menyimpan ${answersToInsert.length} jawaban untuk respons ID: ${response.id}`);
@@ -1271,14 +1272,41 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       }
 
       // 2. Simpan response dengan respondent_id yang valid dan periode survei yang benar
+      
+      // Dapatkan semua pertanyaan dari survei saat ini untuk memeriksa tipe pertanyaan
+      const allQuestions: Question[] = [];
+      if (survey && survey.indicators) {
+        survey.indicators.forEach(indicator => {
+          if (indicator.questions) {
+            allQuestions.push(...indicator.questions);
+          }
+        });
+      }
+      
       const saveData = {
         survey_id: completedResponse.surveyId,
         respondent_id: respondent.id,
-        answers: completedResponse.answers.map(a => ({
-          question_id: a.questionId,
-          score: typeof a.value === 'number' ? a.value :
-                 typeof a.value === 'string' ? parseFloat(a.value) || 3 : 3
-        })),
+        answers: completedResponse.answers.map(a => {
+          // Dapatkan tipe pertanyaan dari survei
+          const question = allQuestions.find(q => q.id === a.questionId);
+          const questionType = question?.type || 'likert';
+          
+          // Jika tipe pertanyaan adalah teks, simpan sebagai teks
+          if (questionType === 'text') {
+            return {
+              question_id: a.questionId,
+              score: 0, // Nilai default untuk pertanyaan teks
+              text_value: String(a.value) // Simpan nilai teks
+            };
+          } else {
+            // Untuk tipe lain, konversi ke angka jika memungkinkan
+            return {
+              question_id: a.questionId,
+              score: typeof a.value === 'number' ? a.value :
+                     typeof a.value === 'string' ? parseFloat(a.value) || 3 : 3
+            };
+          }
+        }),
         periode_survei // Gunakan periode yang sudah diformat dengan benar
       }
 

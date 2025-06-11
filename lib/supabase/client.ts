@@ -255,12 +255,11 @@ export async function getSurveyById(id: string) {
       .from('surveys')
       .select(`
         *,
-        indicators (
-          *,
-          questions (*)
-        )
+        indicators (*, 
+          questions (*))
       `)
       .eq('id', surveyId)
+      .order('order', { foreignTable: 'indicators.questions', ascending: true })
       .single();
 
     if (error) {

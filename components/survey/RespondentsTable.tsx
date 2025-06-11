@@ -36,9 +36,11 @@ interface Respondent {
     id: string;
     question_id: string;
     score: number;
+    text_answer?: string; // Tambahkan field text_answer
     question?: {
       id: string;
       text: string;
+      type: string; // Tambahkan field type
     };
   }>;
   periode_survei?: string;
@@ -214,6 +216,7 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
   };
 
   // Fungsi untuk menampilkan detail pertanyaan dan jawaban responden
+  // Dalam fungsi renderAnswerDetails, ubah bagian yang menampilkan jawaban
   const renderAnswerDetails = (respondent: Respondent) => {
     if (!respondent.answers || respondent.answers.length === 0) {
       return (
@@ -230,37 +233,49 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
           <div className="grid grid-cols-12 text-xs font-medium text-muted-foreground mb-1">
             <div className="col-span-1">No</div>
             <div className="col-span-7">Pertanyaan</div>
-            <div className="col-span-2 text-center">Skor</div>
-            <div className="col-span-2 text-center">Kategori</div>
+            <div className="col-span-4 text-center">Jawaban</div>
           </div>
           {respondent.answers.map((answer, idx) => {
-            // Kategori skor
-            const scoreCategory =
-              answer.score >= 5 ? "Sangat Memuaskan" :
-              answer.score >= 4 ? "Memuaskan" :
-              answer.score >= 3 ? "Cukup Memuaskan" :
-              answer.score >= 2 ? "Kurang Memuaskan" :
-              answer.score >= 1 ? "Tidak Memuaskan" : "Sangat Tidak Memuaskan";
-
-            // Warna berdasarkan skor
-            const scoreColor =
-              answer.score >= 5 ? "text-green-600" :
-              answer.score >= 4 ? "text-green-500" :
-              answer.score >= 3 ? "text-yellow-500" :
-              answer.score >= 2 ? "text-orange-500" : "text-red-500";
-
+            const isTextType = answer.question?.type === 'text';
+            
             return (
               <div key={answer.id} className={`grid grid-cols-12 text-sm py-2 ${idx % 2 === 0 ? 'bg-muted/10' : ''} rounded-md`}>
                 <div className="col-span-1 text-xs">{idx + 1}</div>
                 <div className="col-span-7">{answer.question?.text || "Pertanyaan tidak tersedia"}</div>
-                <div className={`col-span-2 text-center font-medium ${scoreColor}`}>{answer.score}</div>
-                <div className={`col-span-2 text-center text-xs ${scoreColor}`}>{scoreCategory}</div>
+                <div className="col-span-4 text-center">
+                  {isTextType ? (
+                    <span className="text-sm">{answer.text_answer || '-'}</span>
+                  ) : (
+                    <>
+                      <span className={`font-medium ${getScoreColor(answer.score)}`}>{answer.score}</span>
+                      <span className={`text-xs ml-2 ${getScoreColor(answer.score)}`}>{getScoreCategory(answer.score)}</span>
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
     );
+  };
+
+  // Tambahkan fungsi helper untuk warna dan kategori skor
+  const getScoreColor = (score: number) => {
+    if (score >= 5) return 'text-green-600';
+    if (score >= 4) return 'text-green-500';
+    if (score >= 3) return 'text-yellow-500';
+    if (score >= 2) return 'text-orange-500';
+    return 'text-red-500';
+  };
+  
+  const getScoreCategory = (score: number) => {
+    if (score >= 5) return 'Sangat Memuaskan';
+    if (score >= 4) return 'Memuaskan';
+    if (score >= 3) return 'Cukup Memuaskan';
+    if (score >= 2) return 'Kurang Memuaskan';
+    if (score >= 1) return 'Tidak Memuaskan';
+    return 'Sangat Tidak Memuaskan';
   };
 
   if (loading) {

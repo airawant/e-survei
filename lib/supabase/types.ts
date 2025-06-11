@@ -44,6 +44,7 @@ export type Answer = {
   response_id: string;
   question_id: string;
   score: number;
+  text_answer?: string; // Tambahkan text_answer sebagai opsional
   created_at: string;
   updated_at: string;
 }

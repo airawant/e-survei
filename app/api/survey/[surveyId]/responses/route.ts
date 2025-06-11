@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: { surveyId: string } }
 ) {
   try {
-    const { surveyId } = params;
+    // Await params sebelum mengakses propertinya
+    const { surveyId } = await params;
 
     if (!surveyId) {
       return NextResponse.json(
