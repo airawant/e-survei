@@ -255,7 +255,7 @@ export async function getSurveyById(id: string) {
       .from('surveys')
       .select(`
         *,
-        indicators (*, 
+        indicators (*,
           questions (*))
       `)
       .eq('id', surveyId)

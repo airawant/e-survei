@@ -138,6 +138,7 @@ interface SurveyResult {
 
 interface ResultsOverviewProps {
   result: SurveyResult
+  periodeSurvei?: string
 }
 
 interface SurveyBasicDetails {
@@ -206,7 +207,7 @@ interface SurveyResponse {
   period: SurveyPeriod;
 }
 
-export function ResultsOverview({ result }: ResultsOverviewProps) {
+export function ResultsOverview({ result, periodeSurvei }: ResultsOverviewProps) {
   const { getSurveyResults } = useSurvey();
   const [activeTab, setActiveTab] = useState("overview")
   const [forceUpdate, setForceUpdate] = useState(0)
@@ -327,7 +328,7 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
       console.log("Pertanyaan berdasarkan indikator:", indicatorMap);
 
       // 2. Ambil semua responden untuk survei ini dengan jawaban lengkap
-      const { data: respondentsWithData, error: respondentsError } = await supabase
+      let query = supabase
         .from('respondents')
         .select(`
           id,
@@ -335,6 +336,7 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
           survey_id,
           responses (
             id,
+            periode_survei,
             answers (
               id,
               question_id,
@@ -343,6 +345,11 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
           )
         `)
         .eq('survey_id', result.surveyId);
+
+      if (periodeSurvei) {
+        query = query.eq('responses.periode_survei', periodeSurvei);
+      }
+      const { data: respondentsWithData, error: respondentsError } = await query;
 
       if (respondentsError) {
         throw new Error(`Error mengambil responden: ${respondentsError.message}`);
@@ -419,7 +426,7 @@ export function ResultsOverview({ result }: ResultsOverviewProps) {
   // Jalankan sekali saat komponen dimuat
   useEffect(() => {
     fetchRespondentsData();
-  }, [result?.surveyId]);
+  }, [result?.surveyId, periodeSurvei]);
 
   // Hitung total nilai per kolom - dengan pengecekan data
   const calculateColumnSums = () => {

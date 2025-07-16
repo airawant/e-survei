@@ -12,6 +12,7 @@ import ClientOnly from "@/components/survey/ClientOnly"
 import { RespondentsTableSkeleton } from "./RespondentsTableSkeleton"
 import { ResultsOverviewSkeleton } from "./ResultsOverviewSkeleton"
 import dynamic from "next/dynamic"
+import { supabaseClient } from "@/lib/supabase/client"
 
 interface Indicator {
   id: string;
@@ -45,6 +46,23 @@ export default function SurveyResults() {
   const [error, setError] = useState<string | null>(null)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
   const dataFetchedRef = useRef(false)
+  const [periodeOptions, setPeriodeOptions] = useState<string[]>([]);
+  const [selectedPeriode, setSelectedPeriode] = useState<string>("");
+
+  // Fetch distinct periode_survei
+  useEffect(() => {
+    const fetchPeriodeOptions = async () => {
+      const { data, error } = await supabaseClient
+        .from('responses')
+        .select('periode_survei', { distinct: true })
+        .neq('periode_survei', null);
+      if (!error && data) {
+        const unique = Array.from(new Set(data.map((d: any) => d.periode_survei).filter(Boolean)));
+        setPeriodeOptions(unique);
+      }
+    };
+    fetchPeriodeOptions();
+  }, []);
 
   // Mengambil data survey dan hasilnya
   useEffect(() => {
@@ -197,6 +215,21 @@ export default function SurveyResults() {
             </div>
           </div>
 
+          {/* Dropdown filter periode survei */}
+          <div className="mb-4 flex items-center gap-2">
+            <label className="font-medium">Periode Survei:</label>
+            <select
+              className="border rounded px-2 py-1"
+              value={selectedPeriode}
+              onChange={e => setSelectedPeriode(e.target.value)}
+            >
+              <option value="">Semua Periode</option>
+              {periodeOptions.map(periode => (
+                <option key={periode} value={periode}>{periode}</option>
+              ))}
+            </select>
+          </div>
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Ringkasan</TabsTrigger>
@@ -206,19 +239,19 @@ export default function SurveyResults() {
 
             <TabsContent value="overview" className="mt-6">
               <Suspense fallback={<ResultsOverviewSkeleton />}>
-                <SurveyResultsWrapper id={id} />
+                <SurveyResultsWrapper id={id} periodeSurvei={selectedPeriode} />
               </Suspense>
             </TabsContent>
 
             <TabsContent value="respondents" className="mt-6">
               <Suspense fallback={<RespondentsTableSkeleton />}>
-                <RespondentsTable surveyId={id} />
+                <RespondentsTable surveyId={id} periodeSurvei={selectedPeriode} />
               </Suspense>
             </TabsContent>
 
             <TabsContent value="aggregation" className="mt-6">
               <Suspense fallback={<ResultsOverviewSkeleton />}>
-                <ResultsAggregation surveyId={id} />
+                <ResultsAggregation surveyId={id} periodeSurvei={selectedPeriode} />
               </Suspense>
             </TabsContent>
           </Tabs>

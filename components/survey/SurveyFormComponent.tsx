@@ -1571,7 +1571,11 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
   placeholder="Enter options (one per line)"
   value={field.value && Array.isArray(field.value) ? (field.value as string[]).join("\n") : ""}
   onChange={(e) => {
-    const options = e.target.value.split("\n").filter(Boolean)
+    // Gunakan trim() untuk menghapus spasi di awal dan akhir baris saja
+    const options = e.target.value
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line !== "") // Hanya filter baris kosong
     field.onChange(options)
   }}
   onKeyDown={(e) => {
@@ -1580,17 +1584,17 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
       const textarea = e.currentTarget
       const value = textarea.value
       const selectionStart = textarea.selectionStart
-
+      
       // Sisipkan baris baru pada posisi kursor
       const newValue = value.slice(0, selectionStart) + "\n" + value.slice(selectionStart)
-
+      
       // Update nilai textarea
       textarea.value = newValue
-
+      
       // Pindahkan kursor ke baris baru
       textarea.selectionStart = selectionStart + 1
       textarea.selectionEnd = selectionStart + 1
-
+      
       // Trigger event onChange untuk memperbarui state
       const event = new Event('input', { bubbles: true })
       textarea.dispatchEvent(event)

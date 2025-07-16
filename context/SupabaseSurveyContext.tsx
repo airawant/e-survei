@@ -724,6 +724,96 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       // Jalankan update utama
       const updatedSurvey = await performUpdate();
 
+      // Update demographic fields jika ada dalam updates
+      if (updates.demographicFields && updates.demographicFields.length > 0) {
+        console.log("Updating demographic fields:", updates.demographicFields.length)
+
+        try {
+          // Dapatkan semua demographic fields yang ada dari database
+          const { data: existingFields, error } = await supabaseClient
+            .from('demographic_fields')
+            .select('id')
+            .eq('survey_id', id);
+
+          if (error) {
+            console.error("Error fetching existing demographic fields:", error);
+            throw error;
+          }
+
+          console.log("Existing demographic fields:", existingFields?.length || 0);
+
+          // Buat set untuk field yang ada
+          const existingFieldIds = new Set();
+          if (existingFields) {
+            existingFields.forEach(field => {
+              existingFieldIds.add(field.id);
+            });
+          }
+
+          // Proses setiap demographic field
+          for (const field of updates.demographicFields) {
+            if (field.id && existingFieldIds.has(field.id)) {
+              // Update field yang ada
+              console.log(`Updating existing demographic field: ${field.id}`);
+              const { error } = await supabaseClient
+                .from('demographic_fields')
+                .update({
+                  label: field.label,
+                  type: field.type,
+                  required: field.required,
+                  options: field.options || []
+                })
+                .eq('id', field.id);
+
+              if (error) {
+                console.error(`Error updating demographic field ${field.id}:`, error);
+                continue;
+              }
+            } else {
+              // Tambahkan field baru
+              console.log(`Adding new demographic field: ${field.label}`);
+              const { error } = await supabaseClient
+                .from('demographic_fields')
+                .insert({
+                  survey_id: id,
+                  label: field.label,
+                  type: field.type,
+                  required: field.required,
+                  options: field.options || []
+                });
+
+              if (error) {
+                console.error(`Error adding demographic field ${field.label}:`, error);
+                continue;
+              }
+            }
+          }
+
+          // Hapus field yang tidak ada lagi dalam updates
+          const currentFieldIds = updates.demographicFields.map(f => f.id).filter(Boolean);
+          const fieldsToDelete = Array.from(existingFieldIds)
+            .filter(id => !currentFieldIds.includes(id as string));
+
+          if (fieldsToDelete.length > 0) {
+            console.log(`Deleting ${fieldsToDelete.length} removed demographic fields`);
+            for (const fieldId of fieldsToDelete) {
+              const { error } = await supabaseClient
+                .from('demographic_fields')
+                .delete()
+                .eq('id', fieldId);
+
+              if (error) {
+                console.error(`Error deleting demographic field ${fieldId}:`, error);
+              }
+            }
+          }
+
+        } catch (demoError) {
+          console.error("Error updating demographic fields:", demoError);
+          toast.warning("Survei berhasil diperbarui tetapi terjadi masalah dengan pembaruan data demografi");
+        }
+      }
+
       // Update indicators jika ada dalam updates
       if (updates.indicators && updates.indicators.length > 0) {
         console.log("Updating indicators:", updates.indicators.length)
@@ -1272,7 +1362,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
       }
 
       // 2. Simpan response dengan respondent_id yang valid dan periode survei yang benar
-      
+
       // Dapatkan semua pertanyaan dari survei saat ini untuk memeriksa tipe pertanyaan
       const allQuestions: Question[] = [];
       if (survey && survey.indicators) {
@@ -1282,7 +1372,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
           }
         });
       }
-      
+
       const saveData = {
         survey_id: completedResponse.surveyId,
         respondent_id: respondent.id,
@@ -1290,7 +1380,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
           // Dapatkan tipe pertanyaan dari survei
           const question = allQuestions.find(q => q.id === a.questionId);
           const questionType = question?.type || 'likert';
-          
+
           // Jika tipe pertanyaan adalah teks, simpan sebagai teks
           if (questionType === 'text') {
             return {

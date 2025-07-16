@@ -19,6 +19,7 @@ import { id } from 'date-fns/locale';
 
 interface RespondentsTableProps {
   surveyId: string;
+  periodeSurvei?: string;
 }
 
 interface Respondent {
@@ -47,7 +48,7 @@ interface Respondent {
   average_score?: number;
 }
 
-export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
+export default function RespondentsTable({ surveyId, periodeSurvei }: RespondentsTableProps) {
   const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [filteredRespondents, setFilteredRespondents] = useState<Respondent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,9 +106,9 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
       setRespondents(processedData);
 
       // Ekstrak semua periode unik untuk filter dropdown
-      const uniquePeriods = [...new Set(processedData.map((item: Respondent) =>
+      const uniquePeriods = Array.from(new Set(processedData.map((item: Respondent) =>
         item.periode_survei || 'Tidak disetel'
-      ))] as string[];
+      ))) as string[];
       setPeriodOptions(uniquePeriods.sort());
 
     } catch (error) {
@@ -126,8 +127,10 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
   useEffect(() => {
     let results = [...respondents];
 
-    // Filter berdasarkan periode yang dipilih
-    if (selectedPeriod !== 'all') {
+    // Filter berdasarkan periode dari prop jika ada
+    if (periodeSurvei && periodeSurvei !== "") {
+      results = results.filter(r => r.periode_survei === periodeSurvei);
+    } else if (selectedPeriod !== 'all') {
       results = results.filter(r => r.periode_survei === selectedPeriod);
     }
 
@@ -170,7 +173,7 @@ export default function RespondentsTable({ surveyId }: RespondentsTableProps) {
     }
 
     setFilteredRespondents(results);
-  }, [respondents, searchTerm, sortConfig, selectedPeriod]);
+  }, [respondents, searchTerm, sortConfig, selectedPeriod, periodeSurvei]);
 
   const toggleSort = (field: 'created_at' | 'name' | 'average_score' | 'periode_survei') => {
     if (field === sortConfig.key) {

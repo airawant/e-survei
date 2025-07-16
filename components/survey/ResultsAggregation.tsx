@@ -66,6 +66,7 @@ interface DemographicDataItem {
 
 interface ResultsAggregationProps {
   surveyId: string
+  periodeSurvei?: string
 }
 
 interface SurveyResult {
@@ -204,7 +205,7 @@ const getDemographicFieldLabels = async (fieldIds: string[]): Promise<Record<str
   }
 }
 
-export function ResultsAggregation({ surveyId }: ResultsAggregationProps) {
+export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregationProps) {
   const { surveyResults, getSurveyResults, loading, surveys, surveyResponses, getSurveyResponses } = useSurvey()
   const [activeTab, setActiveTab] = useState("all")
   const [overallDistribution, setOverallDistribution] = useState<{ score: number; count: number; percentage: number }[]>([])
@@ -215,7 +216,8 @@ export function ResultsAggregation({ surveyId }: ResultsAggregationProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        await getSurveyResults(surveyId)
+        // Jika ada filter periode, gunakan parameter tersebut untuk fetch data hasil survey
+        await getSurveyResults(surveyId, periodeSurvei)
       } catch (error) {
         console.error("Error fetching survey results:", error)
         // Handle error state jika perlu
@@ -223,7 +225,7 @@ export function ResultsAggregation({ surveyId }: ResultsAggregationProps) {
     }
 
     fetchData()
-  }, [surveyId, getSurveyResults])
+  }, [surveyId, getSurveyResults, periodeSurvei])
 
   // Gunakan useEffect untuk mengambil respons survei jika belum ada
   useEffect(() => {

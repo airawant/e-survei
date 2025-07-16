@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface SurveyResultsWrapperProps {
   id: string
+  periodeSurvei?: string
 }
 
 // Definisi tipe
@@ -26,7 +27,7 @@ interface SurveyResult {
   [key: string]: any
 }
 
-export function SurveyResultsWrapper({ id }: SurveyResultsWrapperProps) {
+export function SurveyResultsWrapper({ id, periodeSurvei }: SurveyResultsWrapperProps) {
   const router = useRouter()
   const { surveyResults, surveyResponses, getSurveyResults, loading } = useSurvey()
   const [isClient, setIsClient] = useState(false)
@@ -70,7 +71,19 @@ export function SurveyResultsWrapper({ id }: SurveyResultsWrapperProps) {
   }
 
   // When we're on the client, we can search for the results
-  const surveyResult = isClient ? surveyResults.find((result: SurveyResult) => result.surveyId === id) : null
+  // Filter surveyResult berdasarkan periodeSurvei jika ada
+  let surveyResult = isClient ? surveyResults.find((result: SurveyResult) => result.surveyId === id) : null;
+  if (surveyResult && periodeSurvei) {
+    // Jika surveyResult memiliki data per periode, filter di sini
+    // Jika tidak, abaikan (asumsi data sudah di-filter di level query Supabase)
+    // Atau, jika surveyResult memiliki responses, filter responses sesuai periode
+    if (surveyResult.responses) {
+      surveyResult = {
+        ...surveyResult,
+        responses: surveyResult.responses.filter((r: any) => r.periode_survei === periodeSurvei)
+      };
+    }
+  }
 
   // Check response count
   const responseCount = isClient ? surveyResponses?.filter((r: SurveyResponse) => r.surveyId === id && r.isComplete)?.length || 0 : 0
@@ -187,5 +200,5 @@ export function SurveyResultsWrapper({ id }: SurveyResultsWrapperProps) {
   }
 
   // If we have a survey result, render the ResultsOverview component
-  return <ResultsOverview result={surveyResult} />
+  return <ResultsOverview result={surveyResult} periodeSurvei={periodeSurvei} />
 }
