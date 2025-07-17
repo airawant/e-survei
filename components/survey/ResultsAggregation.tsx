@@ -216,8 +216,8 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Jika ada filter periode, gunakan parameter tersebut untuk fetch data hasil survey
-        await getSurveyResults(surveyId, periodeSurvei)
+        // Ambil data survey results tanpa parameter periode (karena getSurveyResults mungkin tidak menerima parameter kedua)
+        await getSurveyResults(surveyId)
       } catch (error) {
         console.error("Error fetching survey results:", error)
         // Handle error state jika perlu
@@ -225,7 +225,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
     }
 
     fetchData()
-  }, [surveyId, getSurveyResults, periodeSurvei])
+  }, [surveyId, getSurveyResults])
 
   // Gunakan useEffect untuk mengambil respons survei jika belum ada
   useEffect(() => {
@@ -304,6 +304,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
         // Log untuk debugging
         console.log("Processing demographic data");
         console.log("Total survey responses:", surveyResponses.length);
+        console.log("Filter periode:", periodeSurvei);
 
         const surveyResponsesFiltered = surveyResponses.filter(
           (response) => response.surveyId === surveyId && response.isComplete
@@ -315,9 +316,27 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
           return;
         }
 
+        // Filter berdasarkan periode_survei jika ada
+        let periodFilteredResponses = surveyResponsesFiltered;
+        if (periodeSurvei && periodeSurvei !== "") {
+          console.log("Filtering by period:", periodeSurvei);
+          console.log("Available periods in data:", [...new Set(surveyResponsesFiltered.map(r => r.periode_survei))]);
+
+          periodFilteredResponses = surveyResponsesFiltered.filter(
+            (response) => response.periode_survei === periodeSurvei
+          );
+          console.log("Responses filtered by period:", periodFilteredResponses.length);
+        }
+
+        if (periodFilteredResponses.length === 0) {
+          console.log("No responses found for the selected period");
+          setDemographicData({});
+          return;
+        }
+
         // Cek struktur data pada respons pertama
-        if (surveyResponsesFiltered[0].demographicData) {
-          console.log("Sample demographic data structure:", surveyResponsesFiltered[0].demographicData);
+        if (periodFilteredResponses[0].demographicData) {
+          console.log("Sample demographic data structure:", periodFilteredResponses[0].demographicData);
         }
 
         // Inisialisasi objek untuk menyimpan mapping fieldId ke label
@@ -348,7 +367,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
         const fieldIds: string[] = [];
 
         // Proses semua respons untuk membuat distribusi data demografis
-        surveyResponsesFiltered.forEach((response) => {
+        periodFilteredResponses.forEach((response) => {
           if (response.demographicData && response.demographicData.length > 0) {
             response.demographicData.forEach((data) => {
               // Simpan ID field dan nilai
@@ -422,7 +441,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
     };
 
     processData();
-  }, [surveyResponses, surveyId, surveys]);
+  }, [surveyResponses, surveyId, surveys, periodeSurvei]);
 
   // If loading, show spinner
   if (loading) {

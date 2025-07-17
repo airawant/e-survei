@@ -214,6 +214,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
                   submittedAt: new Date(response.created_at),
                   isComplete: true,
                   demographicData: [],
+                  periode_survei: response.periode_survei || null,
                   answers: response.answers.map((a: { question_id: string; score: number }) => ({
                     questionId: a.question_id,
                     value: a.score
@@ -243,6 +244,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
                 submittedAt: new Date(response.created_at),
                 isComplete: true,
                 demographicData: formattedDemographicData,
+                periode_survei: response.periode_survei || null,
                 answers: response.answers.map((a: { question_id: string; score: number }) => ({
                   questionId: a.question_id,
                   value: a.score
@@ -1587,7 +1589,8 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
           if (!demographicTableExists) {
             return {
               ...r,
-              demographicData: []
+              demographicData: [],
+              periode_survei: r.periode_survei || null
             };
           }
 
@@ -1604,7 +1607,8 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
             console.error('Error fetching demographic data:', error);
             return {
               ...r,
-              demographicData: []
+              demographicData: [],
+              periode_survei: r.periode_survei || null
             };
           }
 
@@ -1616,13 +1620,15 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
 
           return {
             ...r,
-            demographicData: formattedDemographicData
+            demographicData: formattedDemographicData,
+            periode_survei: r.periode_survei || null
           };
         } catch (err) {
           console.error('Error processing demographics for response:', err);
           return {
             ...r,
-            demographicData: []
+            demographicData: [],
+            periode_survei: r.periode_survei || null
           };
         }
       }));
@@ -1634,6 +1640,7 @@ export const SupabaseSurveyProvider = ({ children }: { children: ReactNode }) =>
         submittedAt: new Date(r.created_at),
         isComplete: true,
         demographicData: r.demographicData || [],
+        periode_survei: r.periode_survei || null,
         answers: r.answers.map((a: { question_id: string; score: number }) => ({
           questionId: a.question_id,
           value: a.score
