@@ -53,7 +53,6 @@ export interface SurveyResponse {
   feedback?: string;
   submittedAt: Date;
   isComplete: boolean;
-  periode_survei?: string;
 }
 
 export interface AnswerDistribution {
@@ -92,16 +91,9 @@ export interface SurveyResult {
   averageScore: number;
   satisfactionIndex: number;
   indicatorScores: WeightedScore[];
-  demographicBreakdown: Record<string, Record<string, number>>;
-  crossTabulations: Record<string, Record<string, number>>;
-  trendData: {
-    available: boolean;
-    previousScore: number;
-    currentScore: number;
-    trendPoints: Array<[object Object]      date: Date;
-      score: number;
-    }>;
-  };
+  demographicBreakdown: Record<string, any>;
+  crossTabulations: Record<string, any>;
+  trendData: any;
   calculatedAt: Date;
 }
 
