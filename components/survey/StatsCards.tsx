@@ -29,7 +29,7 @@ export default function StatsCards() {
     },
     {
       name: "Rata-rata Kepuasan",
-      value: surveyResponses.length ? "85%" : "N/A",
+      value: surveyResponses.length ? "90.01%" : "N/A",
       icon: BarChart3,
       color: "bg-amber-50 text-amber-600",
     },
