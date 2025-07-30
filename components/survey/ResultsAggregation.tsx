@@ -69,6 +69,23 @@ interface ResultsAggregationProps {
   periodeSurvei?: string
 }
 
+interface SurveyResponse {
+  id: string;
+  surveyId: string;
+  answers: Array<{
+    questionId: string;
+    value: string | number | string[];
+  }>;
+  demographicData?: Array<{
+    fieldId: string;
+    value: string | number | string[];
+  }>;
+  feedback?: string;
+  submittedAt: Date;
+  isComplete: boolean;
+  periode_survei?: string;
+}
+
 interface SurveyResult {
   surveyId: string;
   surveyTitle?: string;
@@ -99,8 +116,8 @@ interface SurveyResult {
       }>;
     }>;
   }>;
-  demographicBreakdown: Record<string, any>;
-  crossTabulations: Record<string, any>;
+  demographicBreakdown: Record<string, Record<string, number>>;
+  crossTabulations: Record<string, Record<string, number>>;
   trendData: {
     available: boolean;
     previousScore: number;
@@ -116,7 +133,14 @@ interface SurveyResult {
 interface Survey {
   id: string;
   title: string;
-  [key: string]: any;
+  demographicFields?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+  }>;
+  [key: string]: unknown;
 }
 
 interface ChartDataItem {
@@ -172,14 +196,14 @@ const calculateIndexScale = (score: number): number => {
 }
 
 // Fungsi untuk mendapatkan label demografis dari Supabase
-const getDemographicFieldLabels = async (fieldIds: string[]): Promise<Record<string, string>> => {
+const getDemographicFieldLabels = async (fieldIds: string[]): Promise<Record<string, { label: string, type: string }>> => {
   if (!fieldIds || fieldIds.length === 0) return {};
 
   try {
-    // Ambil data field demografis berdasarkan ID
+    // Ambil data field demografis berdasarkan ID, termasuk type
     const { data, error } = await supabaseClient
       .from('demographic_fields')
-      .select('id, label')
+      .select('id, label, type')
       .in('id', fieldIds);
 
     if (error) {
@@ -187,17 +211,20 @@ const getDemographicFieldLabels = async (fieldIds: string[]): Promise<Record<str
       return {};
     }
 
-    // Buat mapping dari ID ke label
-    const labelMap: Record<string, string> = {};
+    // Buat mapping dari ID ke label dan type
+    const labelMap: Record<string, { label: string, type: string }> = {};
     if (data) {
       data.forEach(field => {
         if (field.id && field.label) {
-          labelMap[field.id] = field.label;
+          labelMap[field.id] = {
+            label: field.label,
+            type: field.type || 'text'
+          };
         }
       });
     }
 
-    console.log("Demographic field labels from database:", labelMap);
+    console.log("Demographic field labels and types from database:", labelMap);
     return labelMap;
   } catch (err) {
     console.error("Error in getDemographicFieldLabels:", err);
@@ -339,8 +366,9 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
           console.log("Sample demographic data structure:", periodFilteredResponses[0].demographicData);
         }
 
-        // Inisialisasi objek untuk menyimpan mapping fieldId ke label
+        // Inisialisasi objek untuk menyimpan mapping fieldId ke label dan type
         const demographicFieldLabels: Record<string, string> = {};
+        const demographicFieldTypes: Record<string, string> = {};
 
         // Jika currentSurvey memiliki demographicFields, gunakan untuk mendapatkan label
         const currentSurvey = surveys.find((s) => s.id === surveyId);
@@ -351,11 +379,18 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
 
           const fields = currentSurvey.demographicFields || [];
 
-          // Buat mapping dari ID ke label
-          fields.forEach((field: any) => {
+          // Buat mapping dari ID ke label dan type
+          fields.forEach((field: {
+            id: string;
+            label: string;
+            type: string;
+            required: boolean;
+            options?: string[];
+          }) => {
             if (field && field.id && field.label) {
               demographicFieldLabels[field.id] = field.label;
-              console.log(`Found field mapping: ${field.id} -> "${field.label}"`);
+              demographicFieldTypes[field.id] = field.type || 'text';
+              console.log(`Found field mapping: ${field.id} -> "${field.label}" (type: ${field.type})`);
             }
           });
         }
@@ -398,14 +433,15 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
         // Jika kita tidak memiliki label untuk beberapa field, coba dapatkan dari database
         if (fieldIds.length > 0) {
           try {
-            // Ambil label dari database
+            // Ambil label dan type dari database
             const dbLabels = await getDemographicFieldLabels(fieldIds);
 
             // Gabungkan dengan label yang sudah ada
-            Object.entries(dbLabels).forEach(([id, label]) => {
+            Object.entries(dbLabels).forEach(([id, fieldInfo]) => {
               if (!demographicFieldLabels[id]) {
-                demographicFieldLabels[id] = label;
-                console.log(`Found field label in database: ${id} -> "${label}"`);
+                demographicFieldLabels[id] = fieldInfo.label;
+                demographicFieldTypes[id] = fieldInfo.type;
+                console.log(`Found field info in database: ${id} -> "${fieldInfo.label}" (type: ${fieldInfo.type})`);
               }
             });
           } catch (error) {
@@ -414,11 +450,19 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
         }
 
         console.log("Final field labels:", demographicFieldLabels);
+        console.log("Final field types:", demographicFieldTypes);
 
-        // Konversi data untuk chart
+        // Konversi data untuk chart, dengan filter untuk mengecualikan field type==text
         const processedData: {[key: string]: { label: string, data: {name: string, value: number}[] }} = {};
 
         Object.keys(demographicBreakdown).forEach((fieldId) => {
+          // Filter: Skip field dengan type==text
+          const fieldType = demographicFieldTypes[fieldId];
+          if (fieldType === 'text') {
+            console.log(`Skipping field ${fieldId} (${demographicFieldLabels[fieldId] || 'Unknown'}) because type is 'text'`);
+            return;
+          }
+
           const fieldValues = demographicBreakdown[fieldId];
           const dataPoints = Object.keys(fieldValues).map((value) => ({
             name: value,
@@ -435,7 +479,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
           }
         });
 
-        console.log("Processed demographic data:", processedData);
+        console.log("Processed demographic data (excluding text fields):", processedData);
         setDemographicData(processedData);
       }
     };
