@@ -640,49 +640,92 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
           try {
             console.log("Updating demographic fields");
 
-            // Catatan: Untuk updateSurvey, pendekatan yang lebih baik adalah:
-            // 1. Mendapatkan field demografis yang sudah ada
-            // 2. Menghapus field yang sudah tidak digunakan
-            // 3. Memperbarui field yang sudah ada
-            // 4. Menambahkan field baru
-
-            // Namun untuk sederhananya, kita hapus semua field demografis yang ada dan buat ulang
-
             // Hapus semua field demografis yang ada untuk survei ini
-            const { error: deleteError } = await supabase
+            const { data: existingFields, error } = await supabase
               .from('demographic_fields')
-              .delete()
+              .select('id')
               .eq('survey_id', id);
 
-            if (deleteError) {
-              console.error("Error deleting existing demographic fields:", deleteError);
-              throw deleteError;
+            if (error) {
+              console.error("Error fetching existing demographic fields:", error);
+              throw error;
             }
 
-            // Tambahkan field demografis baru
-            const demographicPromises = data.demographicFields.map(async (field, index) => {
-              try {
-                console.log(`Adding demographic field ${index + 1}/${data.demographicFields.length}: ${field.label}`);
+            console.log("Existing demographic fields:", existingFields?.length || 0);
 
-                const createdField = await addDemographicField({
-                  survey_id: id,
-                  label: field.label,
-                  type: field.type,
-                  required: field.required,
-                  options: field.options || [],
-                  field_order: index + 1
-                });
+            // Buat set untuk field yang ada
+            const existingFieldIds = new Set();
+            if (existingFields) {
+              existingFields.forEach(field => {
+                existingFieldIds.add(field.id);
+              });
+            }
 
-                console.log(`Demographic field created with ID: ${createdField?.id}`);
-                return createdField;
-              } catch (demographicError) {
-                console.error(`Error adding demographic field ${index + 1}:`, demographicError);
-                return null;
+            // Proses setiap demographic field
+            for (const field of data.demographicFields) {
+              // Periksa apakah field ini sudah ada di database
+              const isExistingField = field.id && existingFieldIds.has(field.id);
+
+              if (isExistingField) {
+                // Update field yang ada
+                console.log(`Updating existing demographic field: ${field.id}`);
+                const { error } = await supabase
+                  .from('demographic_fields')
+                  .update({
+                    label: field.label,
+                    type: field.type,
+                    required: field.required,
+                    options: field.options || []
+                  })
+                  .eq('id', field.id);
+
+                if (error) {
+                  console.error(`Error updating demographic field ${field.id}:`, error);
+                  continue;
+                }
+              } else {
+                // Tambahkan field baru (field.id adalah temporary UUID atau tidak ada)
+                console.log(`Adding new demographic field: ${field.label}`);
+                const { error } = await supabase
+                  .from('demographic_fields')
+                  .insert({
+                    survey_id: id,
+                    label: field.label,
+                    type: field.type,
+                    required: field.required,
+                    options: field.options || []
+                  });
+
+                if (error) {
+                  console.error(`Error adding demographic field ${field.label}:`, error);
+                  continue;
+                }
               }
-            });
+            }
 
-            const successfulDemographics = await Promise.all(demographicPromises);
-            console.log(`Successfully updated ${successfulDemographics.filter(Boolean).length}/${data.demographicFields.length} demographic fields`);
+            // Hapus field yang tidak ada lagi dalam updates
+            const currentFieldIds = data.demographicFields.map(f => f.id).filter(Boolean);
+            const fieldsToDelete = Array.from(existingFieldIds)
+              .filter(id => !currentFieldIds.includes(id as string));
+
+            if (fieldsToDelete.length > 0) {
+              console.log(`Deleting ${fieldsToDelete.length} removed demographic fields`);
+              for (const fieldId of fieldsToDelete) {
+                const { error } = await supabase
+                  .from('demographic_fields')
+                  .delete()
+                  .eq('id', fieldId);
+
+                if (error) {
+                  console.error(`Error deleting demographic field ${fieldId}:`, error);
+                }
+              }
+            }
+
+            console.log(`Successfully updated demographic fields`);
+
+            // Refresh data demografis setelah update berhasil
+            await fetchDemographicFields();
           } catch (demographicError) {
             console.error("Error updating demographic fields:", demographicError);
             // Tampilkan peringatan tapi jangan batalkan proses update survei
@@ -1584,17 +1627,17 @@ const SurveyFormComponent = ({ router, isEditing, id }: SurveyFormComponentProps
       const textarea = e.currentTarget
       const value = textarea.value
       const selectionStart = textarea.selectionStart
-      
+
       // Sisipkan baris baru pada posisi kursor
       const newValue = value.slice(0, selectionStart) + "\n" + value.slice(selectionStart)
-      
+
       // Update nilai textarea
       textarea.value = newValue
-      
+
       // Pindahkan kursor ke baris baru
       textarea.selectionStart = selectionStart + 1
       textarea.selectionEnd = selectionStart + 1
-      
+
       // Trigger event onChange untuk memperbarui state
       const event = new Event('input', { bubbles: true })
       textarea.dispatchEvent(event)
