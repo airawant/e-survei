@@ -1338,6 +1338,35 @@ export function ResultsOverview({ result, periodeSurvei }: ResultsOverviewProps)
                 );
               })}
 
+              {/* Baris untuk Jumlah Skor Nilai */}
+              <tr className="bg-blue-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium sticky left-0 bg-blue-50 z-10">
+                  Jumlah Skor Nilai
+                </td>
+                {indicator.questionIds.map((qId) => {
+                  const questionIndex = questionIds.indexOf(qId);
+                  let totalScore = 0;
+
+                  // Hitung jumlah skor untuk pertanyaan ini
+                  respondentsData.forEach(respondent => {
+                    if (!respondent.answers) return;
+                    const score = questionIndex !== -1 ? respondent.answers[questionIndex] : 0;
+                    if (typeof score === 'number' && !isNaN(score)) {
+                      totalScore += score;
+                    }
+                  });
+
+                  return (
+                    <td
+                      key={`sum-${indicatorId}-${qId}`}
+                      className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center"
+                    >
+                      {totalScore}
+                    </td>
+                  );
+                })}
+              </tr>
+
               {/* Baris untuk rata-rata nilai per kolom */}
               <tr className="bg-yellow-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium sticky left-0 bg-yellow-50 z-10">
