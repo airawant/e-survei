@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSurvey } from "@/context/SupabaseSurveyContext"
-import { Loader2, ListChecks, CheckSquare, BarChart3 as ChartBarIcon, Sigma } from "lucide-react"
+import { Loader2, ListChecks, CheckSquare, BarChart3 as ChartBarIcon, Sigma, Download } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { ChevronDown } from "lucide-react"
@@ -238,6 +238,56 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
   const [overallDistribution, setOverallDistribution] = useState<{ score: number; count: number; percentage: number }[]>([])
   const [demographicData, setDemographicData] = useState<{[key: string]: { label: string, data: {name: string, value: number}[] }}>({})
   const [loadingDemographics, setLoadingDemographics] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
+  
+  // Function to export demographic data to CSV
+  const exportDemographicDataToCsv = () => {
+    try {
+      setExportingCsv(true)
+      
+      // If no demographic data, show alert and return
+      if (Object.keys(demographicData).length === 0) {
+        alert("Tidak ada data demografis untuk diekspor")
+        setExportingCsv(false)
+        return
+      }
+      
+      // Get current survey title for the filename
+      const currentSurveyTitle = surveys.find(s => s.id === surveyId)?.title || "survey"
+      const periodText = periodeSurvei ? `-${periodeSurvei}` : ""
+      const filename = `${currentSurveyTitle.replace(/\s+/g, '-').toLowerCase()}${periodText}-demografi.csv`
+      
+      // Create CSV header row
+      let csvContent = "Kategori,Nilai,Jumlah,Persentase\n"
+      
+      // Add data rows
+      Object.entries(demographicData).forEach(([fieldId, field]) => {
+        const { label, data } = field
+        
+        // Add each data point for this field
+        data.forEach(item => {
+          csvContent += `"${label}","${item.name}",${item.value},${(item.value / data.reduce((sum, d) => sum + d.value, 0) * 100).toFixed(1)}%\n`
+        })
+      })
+      
+      // Create a blob and download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      setExportingCsv(false)
+    } catch (error) {
+      console.error("Error exporting CSV:", error)
+      alert("Terjadi kesalahan saat mengekspor data")
+      setExportingCsv(false)
+    }
+  }
 
   // Gunakan useEffect untuk mengambil data survei
   useEffect(() => {
@@ -869,7 +919,7 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
           <Card className="mb-6">
             <CardHeader className="pb-2">
               <CardTitle>Indikator Gabungan</CardTitle>
-              <CardDescription>Hasil keseluruhan dari semua indikator</CardDescription>
+              <CardDescription> dari semua indikator</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
@@ -974,6 +1024,22 @@ export function ResultsAggregation({ surveyId, periodeSurvei }: ResultsAggregati
               </div>
             </CardHeader>
             <CardContent id="demographic-section">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Data Demografis</h3>
+                {Object.keys(demographicData).length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={exportDemographicDataToCsv}
+                    disabled={exportingCsv || loadingDemographics}
+                    className="flex items-center gap-1"
+                  >
+                    <Download className="h-4 w-4" />
+                    {exportingCsv ? 'Mengekspor...' : 'Export CSV'}
+                  </Button>
+                )}
+              </div>
+              
               {loadingDemographics ? (
                 <div className="flex items-center justify-center h-40">
                   <div className="flex flex-col items-center">

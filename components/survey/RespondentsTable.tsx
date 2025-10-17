@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getResponsesBySurveyId } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface RespondentsTableProps {
   surveyId: string;
@@ -62,6 +63,11 @@ export default function RespondentsTable({ surveyId, periodeSurvei }: Respondent
   const [periodOptions, setPeriodOptions] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
 
+  // State untuk data demografis
+  const [demographicFields, setDemographicFields] = useState<any[]>([]);
+  const [demographicResponses, setDemographicResponses] = useState<any[]>([]);
+  const [loadingDemographic, setLoadingDemographic] = useState(false);
+
   // Fungsi untuk toggle expand/collapse baris
   const toggleRowExpanded = (id: string) => {
     const newExpandedRows = new Set(expandedRows);
@@ -84,6 +90,7 @@ export default function RespondentsTable({ surveyId, periodeSurvei }: Respondent
       }
 
       const data = await response.json();
+      console.log(data)
 
       // Proses data untuk menampilkan info yang diperlukan
       const processedData = data.map((item: any) => {
@@ -111,10 +118,50 @@ export default function RespondentsTable({ surveyId, periodeSurvei }: Respondent
       ))) as string[];
       setPeriodOptions(uniquePeriods.sort());
 
+      // Ambil data demografis
+      fetchDemographicData();
+
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fungsi untuk mengambil data demografis
+  const fetchDemographicData = async () => {
+    try {
+      setLoadingDemographic(true);
+
+      // Tentukan URL dengan parameter periode jika ada
+      let url = `/api/survey/${surveyId}/demographic-data`;
+      if (periodeSurvei) {
+        url += `?periodeSurvei=${encodeURIComponent(periodeSurvei)}`;
+      } else if (selectedPeriod !== 'all') {
+        url += `?periodeSurvei=${encodeURIComponent(selectedPeriod)}`;
+      }
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data demografis');
+      }
+
+      const data = await response.json();
+
+      if (data.demographicFields) {
+        setDemographicFields(data.demographicFields);
+      }
+
+      if (data.demographicResponses) {
+        setDemographicResponses(data.demographicResponses);
+      }
+
+    } catch (error) {
+      console.error('Error fetching demographic data:', error);
+      toast.error('Gagal mengambil data demografis');
+    } finally {
+      setLoadingDemographic(false);
     }
   };
 
@@ -183,39 +230,102 @@ export default function RespondentsTable({ surveyId, periodeSurvei }: Respondent
     }
   };
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
     if (filteredRespondents.length === 0) return;
 
-    const headers = ['No', 'Nama', 'Email', 'Telepon', 'Periode Survei', 'Tanggal Submit', 'Skor Rata-rata'];
+    try {
+      // Jika data demografis belum diambil, ambil terlebih dahulu
+      if (demographicFields.length === 0) {
+        await fetchDemographicData();
+      }
 
-    const csvData = filteredRespondents.map((respondent, index) => {
-      const name = respondent.respondent?.name || '-';
-      const email = respondent.respondent?.email || '-';
-      const phone = respondent.respondent?.phone || '-';
-      const periode = respondent.periode_survei || 'Tidak disetel';
-      const date = format(new Date(respondent.created_at), 'dd/MM/yyyy', { locale: id });
-      const score = typeof respondent.average_score === 'number'
-        ? respondent.average_score.toFixed(2)
-        : '-';
+      // Buat header dasar
+      let headers = ['No', 'Periode Survei', 'Tanggal Submit', 'Skor Rata-rata'];
 
-      return [index + 1, name, email, phone, periode, date, score];
-    });
+      // Tambahkan header untuk field demografis
+      const demographicHeaders = demographicFields.map(field => field.label);
+      headers = [...headers, ...demographicHeaders];
 
-    const csvContent = [headers, ...csvData]
-      .map(row => row.join(','))
-      .join('\n');
+      // Buat mapping respons demografis berdasarkan response_id
+      const demographicResponseMap = {};
+      demographicResponses.forEach(response => {
+        if (!demographicResponseMap[response.response_id]) {
+          demographicResponseMap[response.response_id] = {};
+        }
+        demographicResponseMap[response.response_id][response.field_id] = response.value;
+      });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+      // Buat data CSV
+      const csvData = filteredRespondents.map((respondent, index) => {
+        // const name = respondent.respondent?.name || '-';
+        // const email = respondent.respondent?.email || '-';
+        // const phone = respondent.respondent?.phone || '-';
+        const periode = respondent.periode_survei || 'Tidak disetel';
+        const date = format(new Date(respondent.created_at), 'dd/MM/yyyy', { locale: id });
+        const score = typeof respondent.average_score === 'number'
+          ? respondent.average_score.toFixed(2)
+          : '-';
 
-    link.setAttribute('href', url);
-    link.setAttribute('download', `responden-survey-${surveyId}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
+        // Data dasar
+        let rowData = [index + 1, periode, date, score];
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        // Tambahkan data demografis jika ada
+        demographicFields.forEach(field => {
+          // Cari respons demografis untuk responden ini dan field ini
+          let value = '-';
+
+          // Cari di semua respons yang terkait dengan responden ini
+          if (respondent.id) {
+            const responseData = demographicResponseMap[respondent.id];
+            if (responseData && responseData[field.id]) {
+              value = responseData[field.id];
+            }
+          }
+
+          rowData.push(value);
+        });
+
+        return rowData;
+      });
+
+      // Gabungkan menjadi string CSV
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(cell => {
+          // Escape karakter khusus dalam CSV
+          if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+            return `"${cell.replace(/"/g, '""')}"`;
+          }
+          return cell;
+        }).join(','))
+        .join('\n');
+
+      // Buat file dan download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      // Tentukan nama file dengan periode jika ada
+      let filename = `responden-survey-${surveyId}`;
+      if (periodeSurvei) {
+        filename += `-${periodeSurvei}`;
+      } else if (selectedPeriod !== 'all') {
+        filename += `-${selectedPeriod}`;
+      }
+      filename += `-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Data responden berhasil diekspor ke CSV');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      toast.error('Gagal mengekspor data ke CSV');
+    }
   };
 
   // Fungsi untuk menampilkan detail pertanyaan dan jawaban responden
