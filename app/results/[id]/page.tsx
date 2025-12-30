@@ -49,20 +49,32 @@ export default function SurveyResults() {
   const [periodeOptions, setPeriodeOptions] = useState<string[]>([]);
   const [selectedPeriode, setSelectedPeriode] = useState<string>("");
 
-  // Fetch distinct periode_survei
+  // Fetch distinct periode_survei for the selected survey only
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
+      if (!id) return;
+
       const { data, error } = await supabaseClient
         .from('responses')
-        .select('periode_survei', { distinct: true })
+        .select('periode_survei')
+        .eq('survey_id', id)
         .neq('periode_survei', null);
+
       if (!error && data) {
-        const unique = Array.from(new Set(data.map((d: any) => d.periode_survei).filter(Boolean)));
+        const unique = Array.from(
+          new Set(
+            data
+              .map((d: any) => d?.periode_survei)
+              .filter((v: string | null) => v && v.trim() !== "")
+          )
+        );
         setPeriodeOptions(unique);
+      } else {
+        setPeriodeOptions([]);
       }
     };
     fetchPeriodeOptions();
-  }, []);
+  }, [id]);
 
   // Mengambil data survey dan hasilnya
   useEffect(() => {
